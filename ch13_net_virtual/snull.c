@@ -41,7 +41,7 @@
 #define SNULL_RX_INTR 0x0001
 #define SNULL_TX_INTR 0x0002
 
-inint pool_size = 8;			/* 每个设备的包缓冲池大小，可通过 modprobe pool_size=N 调整 */
+int pool_size = 8;			/* 每个设备的包缓冲池大小，可通过 modprobe pool_size=N 调整 */
 module_param(pool_size, int, 0);
 void snull_module_exit(void);
 

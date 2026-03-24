@@ -100,11 +100,14 @@ static ssize_t fifo_write(struct file *file, const char __user *buf,
 	return ret ? ret : copied;
 }
 
-static const struct file_operations fifo_fops = {
-	.owner = THIS_MODULE,
-	.read = fifo_read,
-	.write = fifo_write,
-	.llseek = noop_llseek,
+/*
+ * Linux 5.6+ 要求 /proc 文件使用 struct proc_ops 而非 struct file_operations。
+ * proc_ops 专为 procfs 设计，减少了不必要的函数指针，降低内存占用。
+ */
+static const struct proc_ops fifo_fops = {
+	.proc_read  = fifo_read,
+	.proc_write = fifo_write,
+	.proc_lseek = noop_llseek,
 };
 
 static int __init mod_init(void)
@@ -122,6 +125,7 @@ static int __init mod_init(void)
 #endif
 	if (test_func() < 0)
 		return -EIO;
+	/* proc_create 第4参数在 5.6+ 内核需传入 struct proc_ops * */
 	if (proc_create(PROC_FIFO, 0, NULL, &fifo_fops) == NULL) {
 #ifdef DYNAMIC
                 kfifo_free(&test);

@@ -1,4 +1,4 @@
-KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
+KERNEL_DIR ?= /lib/modules/5.15.0-173-generic/build
 PWD := $(shell pwd)
 
 # driver_template 仅作为教学示例，不参与实际编译

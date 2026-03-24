@@ -31,3 +31,7 @@ static void __exit dma_demo_exit(void)
 
 module_init(dma_demo_init);
 module_exit(dma_demo_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("liweijie");
+MODULE_DESCRIPTION("DMA memory management demo");

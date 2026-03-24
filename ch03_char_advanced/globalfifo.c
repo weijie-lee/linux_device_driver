@@ -35,13 +35,18 @@
  */
 
 #include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/fs.h>                   /* file_operations */
 #include <linux/cdev.h>
-#include <linux/slab.h>			/* for kzalloc() */
-#include <linux/uaccess.h>		/* for copy_from/to_user() */
-#include <linux/wait.h>			/* for wait_queue_head_t, DECLARE_WAITQUEUE */
-#include <linux/sched/signal.h>		/* for signal_pending() */
-#include <linux/poll.h>			/* for poll_table */
-#include <linux/platform_device.h>	/* for platform_device/driver */
+#include <linux/slab.h>                 /* kzalloc */
+#include <linux/uaccess.h>              /* copy_to/from_user */
+#include <linux/wait.h>                 /* wait_queue_head_t */
+#include <linux/sched/signal.h>         /* signal_pending */
+#include <linux/poll.h>                 /* poll_table */
+#include <linux/platform_device.h>      /* platform_device/driver */
+#include <linux/device.h>               /* class_create, device_create */
+#include <linux/mutex.h>                /* mutex */
+#include <linux/errno.h>
 
 #define GLOBALMEM_SIZE	4096
 #define DEVICE_NUM	4

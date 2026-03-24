@@ -6,14 +6,14 @@
  * /dev/i2c_virt so that user-space programs can perform register-level
  * read/write operations over the virtual I2C bus.
  *
- * The device is manually instantiated via i2c_new_device() in module_init,
+ * The device is manually instantiated via i2c_new_client_device() in module_init,
  * which is the standard approach when no Device Tree or ACPI table is present.
  *
  * Key concepts demonstrated:
  *   - i2c_driver probe/remove lifecycle
  *   - i2c_master_send() / i2c_master_recv() — high-level transfer helpers
  *   - i2c_smbus_read/write_byte_data() — SMBus register access
- *   - Manual device instantiation with i2c_new_device()
+ *   - Manual device instantiation with i2c_new_client_device()
  */
 
 #include <linux/module.h>
@@ -301,11 +301,11 @@ static int __init i2c_virt_slave_init(void)
 		return -ENODEV;
 	}
 
-	i2c_virt_client_dev = i2c_new_device(adap, &board);
+	i2c_virt_client_dev = i2c_new_client_device(adap, &board);
 	i2c_put_adapter(adap);
 
 	if (!i2c_virt_client_dev) {
-		pr_err("i2c_virt_slave: i2c_new_device failed\n");
+		pr_err("i2c_virt_slave: i2c_new_client_device failed\n");
 		i2c_del_driver(&i2c_virt_slave_driver);
 		return -ENODEV;
 	}

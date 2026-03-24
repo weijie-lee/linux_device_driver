@@ -60,6 +60,8 @@ struct virt_mac_priv {
 	struct sk_buff_head rx_queue;
 
 	struct virt_stats stats;
+	/* Required by netif_info/netif_dbg/netif_warn macros */
+	u32 msg_enable;
 };
 
 /* ------------------------------------------------------------------ */
@@ -292,6 +294,7 @@ static int __init virt_mac_init(void)
 	spin_lock_init(&priv->rx_lock);
 	skb_queue_head_init(&priv->rx_queue);
 	u64_stats_init(&priv->stats.syncp);
+	priv->msg_enable = netif_msg_init(-1, NETIF_MSG_LINK | NETIF_MSG_PROBE);
 
 	/* Assign a locally-administered MAC address */
 	eth_hw_addr_random(virt_dev);

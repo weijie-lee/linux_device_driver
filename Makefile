@@ -1,7 +1,7 @@
 # Linux 设备驱动开发实践仓库 — 顶层 Makefile
 # 按章节编号组织，Ch00(framework) 为文档章节，不参与编译
 
-KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
+KERNEL_DIR ?= /lib/modules/5.15.0-173-generic/build
 PWD := $(shell pwd)
 
 # 所有可编译章节（按学习顺序排列）

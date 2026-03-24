@@ -35,9 +35,14 @@
  */
 
 #include <linux/module.h>
-#include <linux/cdev.h>
-#include <linux/slab.h>		/* for kzalloc() */
-#include <linux/uaccess.h>	/* for copy_from/to_user() */
+#include <linux/kernel.h>
+#include <linux/fs.h>           /* file_operations, alloc_chrdev_region */
+#include <linux/cdev.h>         /* cdev_init, cdev_add, cdev_del */
+#include <linux/slab.h>         /* kzalloc, kfree */
+#include <linux/uaccess.h>      /* copy_to/from_user */
+#include <linux/device.h>       /* class_create, device_create */
+#include <linux/mutex.h>        /* mutex_lock, mutex_unlock */
+#include <linux/errno.h>        /* EFAULT, EINVAL etc */
 
 #define GLOBALMEM_SIZE	4096		/* 每个设备实例的内存缓冲区大小：4 KiB */
 #define DEVICE_NUM	4		/* 同时创建的设备实例数量 */

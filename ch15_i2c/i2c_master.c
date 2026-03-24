@@ -152,7 +152,6 @@ module_init(i2c_virt_master_init);
 module_exit(i2c_virt_master_exit);
 
 /* Export the bus number so i2c_slave.ko can find the adapter */
-EXPORT_SYMBOL_GPL(i2c_virt_master_exit);	/* placeholder for symbol visibility */
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("liweijie");

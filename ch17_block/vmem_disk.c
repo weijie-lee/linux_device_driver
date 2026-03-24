@@ -1,265 +1,287 @@
 /*
  * vmem_disk.c - Virtual memory-backed block device driver
  *
- * Demonstrates a simple ramdisk-style block device using vmalloc'd memory.
- * Supports both request-queue mode (VMEMD_QUEUE) and make_request mode
- * (VMEMD_NOQUEUE) selectable via the request_mode module parameter.
+ * 本驱动实现一个完全基于内存（vmalloc）的虚拟块设备，无需真实磁盘硬件。
+ * 加载后内核会创建 /dev/vmem_disk0（及更多设备），可以像普通磁盘一样
+ * 进行 mkfs、mount、fdisk 等操作。
  *
- * Fix history:
- *   - Remove duplicate #include <linux/module.h> and <linux/blkdev.h>
- *   - Fix struct member typo: gedisk -> gendisk
- *   - Fix vmem_disk_init(): inverted NULL check caused success path to jump
- *     to error handler; corrected to `if (!devices)`
- *   - Fix setup_device(): out_vfree label was placed outside the switch block,
- *     causing unconditional vfree on every successful path; restructured so
- *     the label is only reached on actual failure
- *   - Implement vmem_disk_exit() to properly release all resources
- *   - Replace printk(KERN_INFO ...) with pr_info/pr_err where appropriate
+ * 适配说明（Linux 5.x blk-mq API）：
+ *   - 旧 API blk_init_queue / blk_peek_request / blk_start_request 已在
+ *     5.0 之后移除，本驱动改用 blk_mq_alloc_disk（单队列 blk-mq）。
+ *   - request 处理在 blk_mq_ops.queue_rq 回调中完成。
+ *
+ * 整改记录：
+ *   - 修复 init 中 if (devices) 逻辑取反 Bug
+ *   - 修复 setup_device 中 goto out_vfree 位置错误导致内存泄漏
+ *   - 修复 gendisk 结构体字段名 gedisk → gendisk
+ *   - 删除重复 #include
+ *   - 补全原本为空的 vmem_disk_exit()
+ *   - 重写块设备队列为 blk-mq，适配 5.15 内核
  */
 
 #include <linux/module.h>
-#include <linux/moduleparam.h>
-#include <linux/init.h>
-#include <linux/sched.h>
-#include <linux/vmalloc.h>
 #include <linux/kernel.h>
-#include <linux/slab.h>
 #include <linux/fs.h>
-#include <linux/hdreg.h>
+#include <linux/errno.h>
+#include <linux/types.h>
+#include <linux/vmalloc.h>
 #include <linux/genhd.h>
 #include <linux/blkdev.h>
-#include <linux/bio.h>
-#include <linux/version.h>
+#include <linux/blk-mq.h>
+#include <linux/hdreg.h>
+#include <linux/slab.h>
 
-#define BIO_ENDIO(bio, status)	bio_endio(bio)
+/* ------------------------------------------------------------------ */
+/*  模块参数                                                             */
+/* ------------------------------------------------------------------ */
 
-static int vmem_disk_major;
-module_param(vmem_disk_major, int, 0);
+static int NDEVICES = 2;
+module_param(NDEVICES, int, 0444);
+MODULE_PARM_DESC(NDEVICES, "Number of virtual disk devices (default 2)");
 
-#define HARDSECT_SIZE		512
-#define NSECTORS		1024
-#define NDEVICES		4
-#define VMEM_DISK_MINORS	16
+static int HARDSECT_SIZE = 512;
+static int NSECTORS      = 1024;
+module_param(HARDSECT_SIZE, int, 0444);
+module_param(NSECTORS,      int, 0444);
+
+#define KERNEL_SECTOR_SIZE	512
 #define KERNEL_SECTOR_SHIFT	9
-#define KERNEL_SECTOR_SIZE	(1 << KERNEL_SECTOR_SHIFT)
 
-enum {
-	VMEMD_QUEUE,
-	VMEMD_NOQUEUE,
-};
-
-static int request_mode = VMEMD_QUEUE;
-module_param(request_mode, int, 0);
+/* ------------------------------------------------------------------ */
+/*  设备私有数据结构                                                     */
+/* ------------------------------------------------------------------ */
 
 struct vmem_disk_dev {
-	int size;
-	u8 *data;
-	int users;
-	int media_changes;
-	spinlock_t lock;
-	struct request_queue *queue;
-	struct gendisk *gd;		/* fix: was 'gedisk', correct type is 'gendisk' */
+int                    size;
+u8                    *data;
+spinlock_t             lock;
+struct gendisk        *gd;
+struct blk_mq_tag_set  tag_set;
 };
 
+static int                   vmem_disk_major;
 static struct vmem_disk_dev *devices;
 
-/* Handle an I/O transfer between the ramdisk buffer and a kernel buffer */
-static void vmem_disk_transfer(struct vmem_disk_dev *dev, unsigned long sector,
-				unsigned long nsect, char *buffer, int write)
+/* ------------------------------------------------------------------ */
+/*  数据传输核心函数                                                     */
+/* ------------------------------------------------------------------ */
+
+static void vmem_disk_transfer(struct vmem_disk_dev *dev, sector_t sector,
+unsigned long nsect, char *buffer, int write)
 {
-	unsigned long offset = sector * KERNEL_SECTOR_SIZE;
-	unsigned long nbytes = nsect * KERNEL_SECTOR_SIZE;
+unsigned long offset = sector * KERNEL_SECTOR_SIZE;
+unsigned long nbytes = nsect * KERNEL_SECTOR_SIZE;
 
-	if ((offset + nbytes) > dev->size) {
-		pr_err("vmem_disk: beyond-end access (offset=%lu nbytes=%lu size=%d)\n",
-		       offset, nbytes, dev->size);
-		return;
-	}
-
-	if (write)
-		memcpy(dev->data + offset, buffer, nbytes);
-	else
-		memcpy(buffer, dev->data + offset, nbytes);
+if ((offset + nbytes) > dev->size) {
+pr_err("vmem_disk: beyond-end access (offset=%lu nbytes=%lu size=%d)\n",
+       offset, nbytes, dev->size);
+return;
 }
 
-/* Transfer a single bio segment by segment */
-static int vmem_disk_xfer_bio(struct vmem_disk_dev *dev, struct bio *bio)
-{
-	struct bio_vec bvec;
-	struct bvec_iter iter;
-	sector_t sector = bio->bi_iter.bi_sector;
-
-	bio_for_each_segment(bvec, bio, iter) {
-		char *buffer = kmap_atomic(bvec.bv_page) + bvec.bv_offset;
-
-		vmem_disk_transfer(dev, sector,
-				   bio_cur_bytes(bio) >> KERNEL_SECTOR_SHIFT,
-				   buffer, bio_data_dir(bio) == WRITE);
-		sector += bio_cur_bytes(bio) >> KERNEL_SECTOR_SHIFT;
-		kunmap_atomic(buffer);
-	}
-
-	return 0;
+if (write)
+memcpy(dev->data + offset, buffer, nbytes);
+else
+memcpy(buffer, dev->data + offset, nbytes);
 }
 
-/* make_request path: bypass the request queue entirely */
-static blk_qc_t vmem_disk_make_request(struct request_queue *q, struct bio *bio)
+static void vmem_disk_xfer_bio(struct vmem_disk_dev *dev, struct bio *bio)
 {
-	struct vmem_disk_dev *dev = q->queuedata;
-	int status;
+struct bio_vec bvec;
+struct bvec_iter iter;
+sector_t sector = bio->bi_iter.bi_sector;
 
-	status = vmem_disk_xfer_bio(dev, bio);
-	BIO_ENDIO(bio, status);
+bio_for_each_segment(bvec, bio, iter) {
+char *buffer = kmap_atomic(bvec.bv_page) + bvec.bv_offset;
+unsigned int nsect = bvec.bv_len >> KERNEL_SECTOR_SHIFT;
 
-	return BLK_QC_T_NONE;
+vmem_disk_transfer(dev, sector, nsect, buffer,
+   bio_data_dir(bio) == WRITE);
+sector += nsect;
+kunmap_atomic(buffer);
+}
 }
 
-/* request_queue path: process requests one by one */
-static void vmem_disk_request(struct request_queue *q)
+/* ------------------------------------------------------------------ */
+/*  blk-mq 操作回调                                                     */
+/* ------------------------------------------------------------------ */
+
+static blk_status_t vmem_disk_queue_rq(struct blk_mq_hw_ctx *hctx,
+const struct blk_mq_queue_data *bd)
 {
-	struct request *req;
-	struct bio *bio;
+struct request *req = bd->rq;
+struct vmem_disk_dev *dev = req->q->queuedata;
+struct bio *bio;
+unsigned long flags;
 
-	while ((req = blk_peek_request(q)) != NULL) {
-		struct vmem_disk_dev *dev = req->rq_disk->private_data;
+blk_mq_start_request(req);
 
-		if (req->cmd_type != REQ_TYPE_FS) {
-			pr_info("vmem_disk: skip non-fs request\n");
-			blk_start_request(req);
-			__blk_end_request_all(req, -EIO);
-			continue;
-		}
+spin_lock_irqsave(&dev->lock, flags);
+__rq_for_each_bio(bio, req)
+vmem_disk_xfer_bio(dev, bio);
+spin_unlock_irqrestore(&dev->lock, flags);
 
-		blk_start_request(req);
-		__rq_for_each_bio(bio, req)
-			vmem_disk_xfer_bio(dev, bio);
-		__blk_end_request_all(req, 0);
-	}
+blk_mq_end_request(req, BLK_STS_OK);
+return BLK_STS_OK;
 }
 
-/*
- * setup_device - initialise one vmem_disk instance
- *
- * Fix: the original code placed 'out_vfree' *after* the switch block, so
- * execution always fell through to vfree() even on the success path.
- * Now each failure branch returns early after cleaning up, and the function
- * only returns successfully when the queue is properly allocated.
- */
+static const struct blk_mq_ops vmem_disk_mq_ops = {
+.queue_rq = vmem_disk_queue_rq,
+};
+
+/* ------------------------------------------------------------------ */
+/*  block_device_operations                                             */
+/* ------------------------------------------------------------------ */
+
+static int vmem_disk_getgeo(struct block_device *bdev, struct hd_geometry *geo)
+{
+struct vmem_disk_dev *dev = bdev->bd_disk->private_data;
+long size = dev->size / KERNEL_SECTOR_SIZE;
+
+geo->heads     = 4;
+geo->sectors   = 16;
+geo->cylinders = size / (geo->heads * geo->sectors);
+geo->start     = 0;
+return 0;
+}
+
+static const struct block_device_operations vmem_disk_ops = {
+.owner   = THIS_MODULE,
+.getgeo  = vmem_disk_getgeo,
+};
+
+/* ------------------------------------------------------------------ */
+/*  设备初始化与清理                                                     */
+/* ------------------------------------------------------------------ */
+
 static int setup_device(struct vmem_disk_dev *dev, int which)
 {
-	memset(dev, 0, sizeof(*dev));
-	dev->size = NSECTORS * HARDSECT_SIZE;
+int ret;
 
-	dev->data = vmalloc(dev->size);
-	if (!dev->data) {
-		pr_err("vmem_disk: vmalloc failure for device %d\n", which);
-		return -ENOMEM;
-	}
+memset(dev, 0, sizeof(*dev));
+dev->size = NSECTORS * HARDSECT_SIZE;
 
-	spin_lock_init(&dev->lock);
-
-	switch (request_mode) {
-	case VMEMD_NOQUEUE:
-		dev->queue = blk_alloc_queue(GFP_KERNEL);
-		if (!dev->queue) {
-			pr_err("vmem_disk: blk_alloc_queue failed for device %d\n", which);
-			goto out_vfree;
-		}
-		blk_queue_make_request(dev->queue, vmem_disk_make_request);
-		break;
-
-	case VMEMD_QUEUE:
-		dev->queue = blk_init_queue(vmem_disk_request, &dev->lock);
-		if (!dev->queue) {
-			pr_err("vmem_disk: blk_init_queue failed for device %d\n", which);
-			goto out_vfree;
-		}
-		break;
-
-	default:
-		pr_info("vmem_disk: unknown request_mode %d, falling back to VMEMD_QUEUE\n",
-			request_mode);
-		dev->queue = blk_init_queue(vmem_disk_request, &dev->lock);
-		if (!dev->queue)
-			goto out_vfree;
-		break;
-	}
-
-	return 0;
-
-out_vfree:
-	vfree(dev->data);
-	dev->data = NULL;
-	return -ENOMEM;
+dev->data = vmalloc(dev->size);
+if (!dev->data) {
+pr_err("vmem_disk: vmalloc failure for device %d\n", which);
+return -ENOMEM;
 }
+memset(dev->data, 0, dev->size);
+spin_lock_init(&dev->lock);
+
+dev->tag_set.ops          = &vmem_disk_mq_ops;
+dev->tag_set.nr_hw_queues = 1;
+dev->tag_set.queue_depth  = 128;
+dev->tag_set.numa_node    = NUMA_NO_NODE;
+dev->tag_set.cmd_size     = 0;
+dev->tag_set.flags        = BLK_MQ_F_SHOULD_MERGE;
+
+ret = blk_mq_alloc_tag_set(&dev->tag_set);
+if (ret) {
+pr_err("vmem_disk: blk_mq_alloc_tag_set failed: %d\n", ret);
+goto out_vfree;
+}
+
+dev->gd = blk_mq_alloc_disk(&dev->tag_set, dev);
+if (IS_ERR(dev->gd)) {
+ret = PTR_ERR(dev->gd);
+pr_err("vmem_disk: blk_mq_alloc_disk failed: %d\n", ret);
+goto out_tag_set;
+}
+
+dev->gd->major        = vmem_disk_major;
+dev->gd->first_minor  = which;
+dev->gd->minors       = 1;
+dev->gd->fops         = &vmem_disk_ops;
+dev->gd->private_data = dev;
+snprintf(dev->gd->disk_name, DISK_NAME_LEN, "vmem_disk%d", which);
+
+blk_queue_logical_block_size(dev->gd->queue, HARDSECT_SIZE);
+blk_queue_physical_block_size(dev->gd->queue, HARDSECT_SIZE);
+set_capacity(dev->gd, NSECTORS * (HARDSECT_SIZE / KERNEL_SECTOR_SIZE));
+
+ret = add_disk(dev->gd);
+if (ret) {
+pr_err("vmem_disk: add_disk failed: %d\n", ret);
+goto out_disk;
+}
+
+pr_info("vmem_disk: device %s registered, size=%d KB\n",
+dev->gd->disk_name, dev->size / 1024);
+return 0;
+
+out_disk:
+put_disk(dev->gd);
+out_tag_set:
+blk_mq_free_tag_set(&dev->tag_set);
+out_vfree:
+vfree(dev->data);
+dev->data = NULL;
+return ret;
+}
+
+static void cleanup_device(struct vmem_disk_dev *dev)
+{
+if (dev->gd) {
+del_gendisk(dev->gd);
+put_disk(dev->gd);
+blk_mq_free_tag_set(&dev->tag_set);
+}
+if (dev->data) {
+vfree(dev->data);
+dev->data = NULL;
+}
+}
+
+/* ------------------------------------------------------------------ */
+/*  模块入口 / 出口                                                     */
+/* ------------------------------------------------------------------ */
 
 static int __init vmem_disk_init(void)
 {
-	int i;
-	int ret;
-	int major;
+int i, ret;
 
-	major = register_blkdev(0, "vmem_disk");
-	if (major <= 0) {
-		pr_err("vmem_disk: unable to get major number\n");
-		return -EBUSY;
-	}
-	vmem_disk_major = major;
-	pr_info("vmem_disk: registered with major number %d\n", major);
+vmem_disk_major = register_blkdev(0, "vmem_disk");
+if (vmem_disk_major <= 0) {
+pr_err("vmem_disk: unable to get major number\n");
+return -EBUSY;
+}
+pr_info("vmem_disk: registered with major number %d\n", vmem_disk_major);
 
-	devices = kcalloc(NDEVICES, sizeof(struct vmem_disk_dev), GFP_KERNEL);
-	if (!devices) {		/* fix: was `if (devices)` — inverted condition */
-		ret = -ENOMEM;
-		goto out_unregister;
-	}
-
-	for (i = 0; i < NDEVICES; i++) {
-		ret = setup_device(devices + i, i);
-		if (ret) {
-			pr_err("vmem_disk: setup_device failed for device %d\n", i);
-			goto out_free_devices;
-		}
-	}
-
-	return 0;
-
-out_free_devices:
-	/* clean up any devices that were successfully set up */
-	while (--i >= 0) {
-		if ((devices + i)->queue)
-			blk_cleanup_queue((devices + i)->queue);
-		if ((devices + i)->data)
-			vfree((devices + i)->data);
-	}
-	kfree(devices);
-out_unregister:
-	unregister_blkdev(vmem_disk_major, "vmem_disk");
-	return ret;
+devices = kcalloc(NDEVICES, sizeof(struct vmem_disk_dev), GFP_KERNEL);
+if (!devices) {
+ret = -ENOMEM;
+goto out_unregister;
 }
 
-/*
- * vmem_disk_exit - release all resources
- *
- * Fix: original exit function was empty — no cleanup at all.
- * Now properly frees queues, data buffers, device array, and unregisters
- * the block device major number.
- */
+for (i = 0; i < NDEVICES; i++) {
+ret = setup_device(devices + i, i);
+if (ret) {
+pr_err("vmem_disk: setup_device[%d] failed: %d\n", i, ret);
+goto out_cleanup;
+}
+}
+
+return 0;
+
+out_cleanup:
+while (--i >= 0)
+cleanup_device(devices + i);
+kfree(devices);
+out_unregister:
+unregister_blkdev(vmem_disk_major, "vmem_disk");
+return ret;
+}
+
 static void __exit vmem_disk_exit(void)
 {
-	int i;
+int i;
 
-	for (i = 0; i < NDEVICES; i++) {
-		struct vmem_disk_dev *dev = devices + i;
+for (i = 0; i < NDEVICES; i++)
+cleanup_device(devices + i);
 
-		if (dev->queue)
-			blk_cleanup_queue(dev->queue);
-		if (dev->data)
-			vfree(dev->data);
-	}
-
-	kfree(devices);
-	unregister_blkdev(vmem_disk_major, "vmem_disk");
-	pr_info("vmem_disk: module unloaded\n");
+kfree(devices);
+unregister_blkdev(vmem_disk_major, "vmem_disk");
+pr_info("vmem_disk: module unloaded\n");
 }
 
 module_init(vmem_disk_init);
@@ -267,4 +289,4 @@ module_exit(vmem_disk_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("liweijie");
-MODULE_DESCRIPTION("Virtual memory-backed block device driver demo");
+MODULE_DESCRIPTION("Virtual memory-backed block device (blk-mq, no hardware required)");

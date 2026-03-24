@@ -1,4 +1,4 @@
-KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
+KERNEL_DIR ?= /lib/modules/5.15.0-173-generic/build
 PWD := $(shell pwd)
 obj-m := regmap_demo.o
 all:
