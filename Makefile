@@ -11,7 +11,11 @@ DRIVERS := \
 	linked_lists \
 	seconds \
 	snull \
-	vmem_disk
+	vmem_disk \
+	spi_driver \
+	i2c_driver \
+	eth_driver \
+	mmc_driver
 
 .PHONY: all clean $(DRIVERS)
 
