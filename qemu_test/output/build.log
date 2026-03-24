@@ -1,0 +1,110 @@
+make: Entering directory '/home/ubuntu/linux_device_driver'
+>>> Building ch01_kernel_basics ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch01_kernel_basics'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch01_kernel_basics modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch01_kernel_basics'
+>>> Building ch02_char_basic ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch02_char_basic'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch02_char_basic'
+>>> Building ch03_char_advanced ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch03_char_advanced'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch03_char_advanced'
+>>> Building ch04_timer ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch04_timer'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch04_timer'
+>>> Building ch05_misc ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch05_misc'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch05_misc modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch05_misc'
+>>> Building ch06_platform ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch06_platform'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch06_platform modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch06_platform'
+>>> Building ch07_input ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch07_input'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch07_input modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch07_input'
+>>> Building ch08_regmap ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch08_regmap'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch08_regmap modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch08_regmap'
+>>> Building ch09_watchdog ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch09_watchdog'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch09_watchdog modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch09_watchdog'
+>>> Building ch10_rtc ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch10_rtc'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch10_rtc modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch10_rtc'
+>>> Building ch11_pwm ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch11_pwm'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch11_pwm modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch11_pwm'
+>>> Building ch12_dma ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch12_dma'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver/ch12_dma modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch12_dma'
+>>> Building ch13_net_virtual ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch13_net_virtual'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch13_net_virtual'
+>>> Building ch14_net_mac_phy ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch14_net_mac_phy'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch14_net_mac_phy'
+>>> Building ch15_i2c ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch15_i2c'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch15_i2c'
+>>> Building ch16_spi ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch16_spi'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch16_spi'
+>>> Building ch17_block ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch17_block'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch17_block'
+>>> Building ch18_mmc ...
+make[1]: Entering directory '/home/ubuntu/linux_device_driver/ch18_mmc'
+make -C /lib/modules/5.15.0-173-generic/build M=/home/ubuntu/linux_device_driver modules
+make[2]: Entering directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[2]: Leaving directory '/usr/src/linux-headers-5.15.0-173-generic'
+make[1]: Leaving directory '/home/ubuntu/linux_device_driver/ch18_mmc'
+make: Leaving directory '/home/ubuntu/linux_device_driver'

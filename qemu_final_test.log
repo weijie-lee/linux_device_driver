@@ -1,0 +1,68 @@
+[1m============================================================[0m
+[1m Linux 驱动 QEMU 测试运行脚本[0m
+[1m============================================================[0m
+[0;34m[INFO][0m  Step 1/3: 检查依赖...
+[0;32m[OK][0m    QEMU: QEMU emulator version 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6.28)
+[0;32m[OK][0m    vmlinuz   : /home/ubuntu/linux_device_driver/qemu_test/output/vmlinuz (12M)
+[0;32m[OK][0m    initramfs : /home/ubuntu/linux_device_driver/qemu_test/output/initramfs.cpio.gz (3.0M)
+[0;34m[INFO][0m  Step 2/3: 构建 QEMU 命令行...
+  QEMU 命令：
+    qemu-system-x86_64 -M q35 -m 512M -smp 2 -cpu qemu64 -kernel 
+    /home/ubuntu/linux_device_driver/qemu_test/output/vmlinuz -initrd 
+    /home/ubuntu/linux_device_driver/qemu_test/output/initramfs.cpio.gz -append 
+    console=ttyS0 panic=5 quiet loglevel=3 -nographic -serial 
+    file:/home/ubuntu/linux_device_driver/qemu_test/output/qemu_serial.log 
+    -no-reboot -monitor none
+
+[0;34m[INFO][0m  Step 3/3: 启动 QEMU（超时 240s）...
+  QEMU PID: 94292
+  日志文件: /home/ubuntu/linux_device_driver/qemu_test/output/qemu_serial.log
+
+  等待中... 3s / 240s（日志 7 行）  等待中... 6s / 240s（日志 17 行）  等待中... 9s / 240s（日志 23 行）  等待中... 12s / 240s（日志 29 行）  等待中... 15s / 240s（日志 37 行）  等待中... 18s / 240s（日志 41 行）  等待中... 21s / 240s（日志 45 行）  等待中... 24s / 240s（日志 47 行）[0;32m[OK][0m    QEMU 进程已退出（27s）
+
+
+[1m============================================================[0m
+[1m 测试结果[0m
+[1m============================================================[0m
+
+  详细结果：
+--- Ch01: kfifo ---
+  ✅ [PASS] ch01_kfifo insmod+rmmod
+--- Ch02: globalmem ---
+  ✅ [PASS] ch02_globalmem insmod
+--- Ch03: globalfifo ---
+  ✅ [PASS] ch03_globalfifo insmod
+--- Ch04: second ---
+  ✅ [PASS] ch04_second dev=/dev/second
+--- Ch05: misc ---
+  ✅ [PASS] ch05_misc dev=/dev/misc_demo
+--- Ch06: platform ---
+  ✅ [PASS] ch06_platform sysfs
+--- Ch07: input ---
+  ✅ [PASS] ch07_input event_dev
+--- Ch08: regmap ---
+  ✅ [PASS] ch08_regmap insmod
+--- Ch09: watchdog ---
+  ✅ [PASS] ch09_watchdog dev
+--- Ch10: rtc ---
+  ✅ [PASS] ch10_rtc dev
+--- Ch11: pwm ---
+  ✅ [PASS] ch11_pwm sysfs
+--- Ch12: dma ---
+  ✅ [PASS] ch12_dma insmod
+--- Ch13: snull ---
+  ✅ [PASS] ch13_snull netdev
+--- Ch14: eth_mac ---
+  ✅ [PASS] ch14_eth_mac netdev
+--- Ch15: i2c ---
+  ✅ [PASS] ch15_i2c slave_dev
+--- Ch16: spi ---
+  ✅ [PASS] ch16_spi slave_dev
+--- Ch17: vmem_disk ---
+  ✅ [PASS] ch17_vmem_disk dev
+--- Ch18: mmc ---
+  ✅ [PASS] ch18_mmc host
+
+qemu_test/run_qemu.sh: line 210: 0
+0: syntax error in expression (error token is "0")
+qemu_test/run_qemu.sh: line 212: TOTAL: unbound variable

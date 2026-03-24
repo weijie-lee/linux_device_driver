@@ -1,0 +1,27 @@
+QEMU 测试结果摘要
+生成时间: Tue Mar 24 03:41:39 EDT 2026
+内核: unknown
+
+PASS: 18
+FAIL: 00
+TOTAL: 18
+
+详细结果：
+[PASS] ch01_kfifo insmod+rmmod
+[PASS] ch02_globalmem insmod
+[PASS] ch03_globalfifo insmod
+[PASS] ch04_second dev=/dev/second
+[PASS] ch05_misc dev=/dev/misc_demo
+[PASS] ch06_platform sysfs
+[PASS] ch07_input event_dev
+[PASS] ch08_regmap insmod
+[PASS] ch09_watchdog dev
+[PASS] ch10_rtc dev
+[PASS] ch11_pwm sysfs
+[PASS] ch12_dma insmod
+[PASS] ch13_snull netdev
+[PASS] ch14_eth_mac netdev
+[PASS] ch15_i2c slave_dev
+[PASS] ch16_spi slave_dev
+[PASS] ch17_vmem_disk dev
+[PASS] ch18_mmc host

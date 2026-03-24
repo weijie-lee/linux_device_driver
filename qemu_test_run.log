@@ -1,0 +1,107 @@
+
+[1m╔══════════════════════════════════════════════════════════╗[0m
+[1m║       Linux 驱动模块 QEMU 全量测试套件                   ║[0m
+[1m╚══════════════════════════════════════════════════════════╝[0m
+  开始时间: Tue Mar 24 03:35:37 EDT 2026
+  输出目录: /home/ubuntu/linux_device_driver/qemu_test/output
+
+[1m━━━ Phase 1/2: 构建 rootfs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m============================================================[0m
+[1m Linux 驱动 QEMU 测试环境构建脚本[0m
+[1m============================================================[0m
+  仓库目录: /home/ubuntu/linux_device_driver
+  输出目录: /home/ubuntu/linux_device_driver/qemu_test/output
+
+[0;34m[INFO][0m  Step 1/5: 检查依赖...
+[0;32m[OK][0m    busybox 已安装
+[0;32m[OK][0m    cpio 已安装
+[0;32m[OK][0m    gzip 已安装
+[0;32m[OK][0m    make 已安装
+[0;34m[INFO][0m  Step 2/5: 编译所有驱动模块...
+[0;32m[OK][0m    使用内核头文件: /lib/modules/5.15.0-173-generic/build (5.15.0-173-generic)
+[1;33m[WARN][0m  编译可能有警告，请检查 /home/ubuntu/linux_device_driver/qemu_test/output/build.log
+[0;34m[INFO][0m  Step 3/5: 构建 rootfs 目录树...
+[0;32m[OK][0m    busybox 已安装到 rootfs: 20 个命令
+[0;34m[INFO][0m  Step 4/5: 收集并复制驱动模块 (.ko)...
+[0;32m[OK][0m      ✅ ch17_block_vmem_disk.ko
+[0;32m[OK][0m      ✅ ch14_net_mac_phy_eth_mac.ko
+[0;32m[OK][0m      ✅ ch13_net_virtual_snull.ko
+[0;32m[OK][0m      ✅ ch09_watchdog_watchdog_demo.ko
+[0;32m[OK][0m      ✅ ch07_input_input_demo.ko
+[0;32m[OK][0m      ✅ ch06_platform_platform_demo.ko
+[0;32m[OK][0m      ✅ ch11_pwm_pwm_demo.ko
+[0;32m[OK][0m      ✅ ch05_misc_misc_demo.ko
+[0;32m[OK][0m      ✅ ch04_timer_second.ko
+[0;32m[OK][0m      ✅ ch03_char_advanced_globalfifo.ko
+[0;32m[OK][0m      ✅ ch10_rtc_rtc_demo.ko
+[0;32m[OK][0m      ✅ ch02_char_basic_globalmem.ko
+[0;32m[OK][0m      ✅ ch18_mmc_mmc_virt.ko
+[0;32m[OK][0m      ✅ ch01_kernel_basics_kfifo_demo_static.ko
+[1;33m[WARN][0m    ⚠️  未找到: /home/ubuntu/linux_device_driver/ch16_spi/spi_virt_master.ko
+[1;33m[WARN][0m    ⚠️  未找到: /home/ubuntu/linux_device_driver/ch16_spi/spi_virt_slave.ko
+[1;33m[WARN][0m    ⚠️  未找到: /home/ubuntu/linux_device_driver/ch15_i2c/i2c_virt_master.ko
+[1;33m[WARN][0m    ⚠️  未找到: /home/ubuntu/linux_device_driver/ch15_i2c/i2c_virt_slave.ko
+[0;32m[OK][0m      ✅ ch08_regmap_regmap_demo.ko
+[0;32m[OK][0m      ✅ ch12_dma_dma_demo.ko
+
+[0;32m[OK][0m    共复制 16 个 .ko 文件
+[1;33m[WARN][0m  以下模块未找到（可能编译失败）: ch16_spi/spi_virt_master.ko ch16_spi/spi_virt_slave.ko ch15_i2c/i2c_virt_master.ko ch15_i2c/i2c_virt_slave.ko
+[0;34m[INFO][0m  Step 5/5: 生成 init 测试脚本...
+[0;32m[OK][0m    init 脚本已写入 /home/ubuntu/linux_device_driver/qemu_test/output/rootfs/init
+[0;34m[INFO][0m  打包 initramfs.cpio.gz...
+[0;32m[OK][0m    initramfs 打包完成: /home/ubuntu/linux_device_driver/qemu_test/output/initramfs.cpio.gz (2.6M)
+cp: cannot open '/boot/vmlinuz-5.15.0-173-generic' for reading: Permission denied
+[0;31m[ERROR][0m rootfs 构建失败，退出
+
+[1m╔══════════════════════════════════════════════════════════╗[0m
+[1m║       Linux 驱动模块 QEMU 全量测试套件                   ║[0m
+[1m╚══════════════════════════════════════════════════════════╝[0m
+  开始时间: Tue Mar 24 03:36:35 EDT 2026
+  输出目录: /home/ubuntu/linux_device_driver/qemu_test/output
+
+[1m━━━ Phase 1/2: 构建 rootfs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m============================================================[0m
+[1m Linux 驱动 QEMU 测试环境构建脚本[0m
+[1m============================================================[0m
+  仓库目录: /home/ubuntu/linux_device_driver
+  输出目录: /home/ubuntu/linux_device_driver/qemu_test/output
+
+[0;34m[INFO][0m  Step 1/5: 检查依赖...
+[0;32m[OK][0m    busybox 已安装
+[0;32m[OK][0m    cpio 已安装
+[0;32m[OK][0m    gzip 已安装
+[0;32m[OK][0m    make 已安装
+[0;34m[INFO][0m  Step 2/5: 编译所有驱动模块...
+[0;32m[OK][0m    使用内核头文件: /lib/modules/5.15.0-173-generic/build (5.15.0-173-generic)
+[1;33m[WARN][0m  编译可能有警告，请检查 /home/ubuntu/linux_device_driver/qemu_test/output/build.log
+[0;34m[INFO][0m  Step 3/5: 构建 rootfs 目录树...
+[0;32m[OK][0m    busybox 已安装到 rootfs: 20 个命令
+[0;34m[INFO][0m  Step 4/5: 收集并复制驱动模块 (.ko)...
+[0;32m[OK][0m      ✅ ch17_block_vmem_disk.ko
+[0;32m[OK][0m      ✅ ch14_net_mac_phy_eth_mac.ko
+[0;32m[OK][0m      ✅ ch13_net_virtual_snull.ko
+[0;32m[OK][0m      ✅ ch09_watchdog_watchdog_demo.ko
+[0;32m[OK][0m      ✅ ch07_input_input_demo.ko
+[0;32m[OK][0m      ✅ ch06_platform_platform_demo.ko
+[0;32m[OK][0m      ✅ ch11_pwm_pwm_demo.ko
+[0;32m[OK][0m      ✅ ch05_misc_misc_demo.ko
+[0;32m[OK][0m      ✅ ch04_timer_second.ko
+[0;32m[OK][0m      ✅ ch03_char_advanced_globalfifo.ko
+[0;32m[OK][0m      ✅ ch10_rtc_rtc_demo.ko
+[0;32m[OK][0m      ✅ ch02_char_basic_globalmem.ko
+[0;32m[OK][0m      ✅ ch18_mmc_mmc_virt.ko
+[0;32m[OK][0m      ✅ ch01_kernel_basics_kfifo_demo_static.ko
+[0;32m[OK][0m      ✅ ch16_spi_spi_master.ko
+[0;32m[OK][0m      ✅ ch16_spi_spi_slave.ko
+[0;32m[OK][0m      ✅ ch15_i2c_i2c_master.ko
+[0;32m[OK][0m      ✅ ch15_i2c_i2c_slave.ko
+[0;32m[OK][0m      ✅ ch08_regmap_regmap_demo.ko
+[0;32m[OK][0m      ✅ ch12_dma_dma_demo.ko
+
+[0;32m[OK][0m    共复制 20 个 .ko 文件
+[0;34m[INFO][0m  Step 5/5: 生成 init 测试脚本...
+[0;32m[OK][0m    init 脚本已写入 /home/ubuntu/linux_device_driver/qemu_test/output/rootfs/init
+[0;34m[INFO][0m  打包 initramfs.cpio.gz...
+[0;32m[OK][0m    initramfs 打包完成: /home/ubuntu/linux_device_driver/qemu_test/output/initramfs.cpio.gz (3.0M)
+cp: cannot open '/boot/vmlinuz-5.15.0-173-generic' for reading: Permission denied
+[0;31m[ERROR][0m rootfs 构建失败，退出

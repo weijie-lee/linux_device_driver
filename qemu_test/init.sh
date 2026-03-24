@@ -180,7 +180,9 @@ if [ $? -eq 0 ]; then
     safe_rmmod watchdog_demo
 else
     fail "ch09_watchdog" "$(cat /tmp/insmod_err)"
-f# ── Ch10: rtc ─────────────────────────────────────────────────────────────────────
+fi
+
+# ── Ch10: rtc ─────────────────────────────────────────────────────────────────────
 echo "--- Ch10: rtc ---"
 safe_insmod "$MODDIR/ch10_rtc_rtc_demo.ko"
 INSMOD_RET=$?
@@ -244,38 +246,38 @@ fi
 
 # ── Ch15: i2c ─────────────────────────────────────────────────────────────────
 echo "--- Ch15: i2c ---"
-safe_insmod "$MODDIR/ch15_i2c_i2c_virt_master.ko"
+safe_insmod "$MODDIR/ch15_i2c_i2c_master.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    safe_insmod "$MODDIR/ch15_i2c_i2c_virt_slave.ko"
+    safe_insmod "$MODDIR/ch15_i2c_i2c_slave.ko"
     if [ $? -eq 0 ]; then
         sleep 1
         ls /dev/i2c_virt* 2>/dev/null | grep -q "i2c" && \
             pass "ch15_i2c slave_dev" || pass "ch15_i2c both_loaded"
-        safe_rmmod i2c_virt_slave
+        safe_rmmod i2c_slave
     else
         pass "ch15_i2c master_only"
     fi
-    safe_rmmod i2c_virt_master
+    safe_rmmod i2c_master
 else
     fail "ch15_i2c_master" "$(cat /tmp/insmod_err)"
 fi
 
 # ── Ch16: spi ─────────────────────────────────────────────────────────────────
 echo "--- Ch16: spi ---"
-safe_insmod "$MODDIR/ch16_spi_spi_virt_master.ko"
+safe_insmod "$MODDIR/ch16_spi_spi_master.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    safe_insmod "$MODDIR/ch16_spi_spi_virt_slave.ko"
+    safe_insmod "$MODDIR/ch16_spi_spi_slave.ko"
     if [ $? -eq 0 ]; then
         sleep 1
         ls /dev/spi_virt* 2>/dev/null | grep -q "spi" && \
             pass "ch16_spi slave_dev" || pass "ch16_spi both_loaded"
-        safe_rmmod spi_virt_slave
+        safe_rmmod spi_slave
     else
         pass "ch16_spi master_only"
     fi
-    safe_rmmod spi_virt_master
+    safe_rmmod spi_master
 else
     fail "ch16_spi_master" "$(cat /tmp/insmod_err)"
 fi

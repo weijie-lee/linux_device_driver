@@ -1,0 +1,59 @@
+c[?7l[2J[0mSeaBIOS (version 1.15.0-1)
+
+
+iPXE (https://ipxe.org) 00:02.0 CA00 PCI2.10 PnP PMM+1FF8B0D0+1FECB0D0 CA00
+Press Ctrl-B to configure iPXE (PCI 00:02.0)...                                                                               
+
+
+Booting from ROM...
+c[?7l[2J============================================
+ Linux Driver Module Test Suite
+ Kernel: 5.15.0-173-generic
+ Date  : Tue Mar 24 07:41:16 UTC 2026
+============================================
+--- Ch01: kfifo ---
+[PASS] ch01_kfifo insmod+rmmod
+--- Ch02: globalmem ---
+[PASS] ch02_globalmem insmod
+--- Ch03: globalfifo ---
+[PASS] ch03_globalfifo insmod
+--- Ch04: second ---
+[PASS] ch04_second dev=/dev/second
+--- Ch05: misc ---
+[PASS] ch05_misc dev=/dev/misc_demo
+--- Ch06: platform ---
+[PASS] ch06_platform sysfs
+--- Ch07: input ---
+[PASS] ch07_input event_dev
+--- Ch08: regmap ---
+[PASS] ch08_regmap insmod
+--- Ch09: watchdog ---
+[PASS] ch09_watchdog dev
+--- Ch10: rtc ---
+[PASS] ch10_rtc dev
+--- Ch11: pwm ---
+[PASS] ch11_pwm sysfs
+--- Ch12: dma ---
+[PASS] ch12_dma insmod
+--- Ch13: snull ---
+[PASS] ch13_snull netdev
+--- Ch14: eth_mac ---
+[PASS] ch14_eth_mac netdev
+--- Ch15: i2c ---
+[PASS] ch15_i2c slave_dev
+--- Ch16: spi ---
+[PASS] ch16_spi slave_dev
+--- Ch17: vmem_disk ---
+[PASS] ch17_vmem_disk dev
+--- Ch18: mmc ---
+[PASS] ch18_mmc host
+
+============================================
+ TEST RESULTS SUMMARY
+============================================
+ PASS: 18
+ FAIL: 0
+ TOTAL: 18
+============================================
+QEMU_TEST_DONE
+[   23.167547] reboot: Power down

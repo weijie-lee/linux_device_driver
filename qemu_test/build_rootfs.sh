@@ -178,8 +178,8 @@ declare -A KO_MAP=(
     ["ch12_dma"]="dma_demo"
     ["ch13_net_virtual"]="snull"
     ["ch14_net_mac_phy"]="eth_mac"
-    ["ch15_i2c"]="i2c_virt_master i2c_virt_slave"
-    ["ch16_spi"]="spi_virt_master spi_virt_slave"
+    ["ch15_i2c"]="i2c_master i2c_slave"
+    ["ch16_spi"]="spi_master spi_slave"
     ["ch17_block"]="vmem_disk"
     ["ch18_mmc"]="mmc_virt"
 )
