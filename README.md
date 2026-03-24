@@ -3,6 +3,7 @@
 [![License: GPL](https://img.shields.io/badge/License-GPL-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Kernel](https://img.shields.io/badge/Kernel-5.15%2F6.x-orange.svg)](https://kernel.org)
 [![Build](https://img.shields.io/badge/Build-18%2F18%20PASS-brightgreen.svg)](#编译测试结果)
+[![QEMU Test](https://img.shields.io/badge/QEMU%20Test-19%2F19%20PASS-brightgreen.svg)](#qemu-运行时测试结果)
 
 本仓库是跟随《Linux设备驱动开发详解》（宋宝华 编著）系统学习的实践代码库，覆盖 Linux 内核驱动开发的全部主要子系统。所有驱动均基于**内核模拟设备**实现，无需真实硬件即可在标准 Linux 环境中编译、加载和验证。
 
@@ -124,6 +125,31 @@ Ch00 框架总览（必读前置）
 ✅ ch17_block            — vmem_disk.ko
 ✅ ch18_mmc              — mmc_virt.ko
 ```
+
+### QEMU 运行时测试结果
+
+所有 18 个驱动章节均已在 **QEMU x86_64 虚拟机**（内核 5.15.0-173-generic）中完成运行时验证，**19 项测试全部通过（19/19 PASS）**。详细报告见 [TEST_RESULTS.md](./TEST_RESULTS.md)。
+
+| 章节 | 驱动 | 测试结果 | 验证内容 |
+|------|------|---------|--------|
+| Ch01 | kfifo_demo_static | ✅ PASS | insmod/rmmod 成功 |
+| Ch02 | globalmem | ✅ PASS | insmod 成功 |
+| Ch03 | globalfifo | ✅ PASS | insmod 成功 |
+| Ch04 | second | ✅ PASS | /dev/second 设备节点创建 |
+| Ch05 | misc_demo | ✅ PASS | /dev/misc_demo 创建 |
+| Ch06 | platform_demo | ✅ PASS | sysfs 条目创建 |
+| Ch07 | input_demo | ✅ PASS | /dev/input/eventX 创建 |
+| Ch08 | regmap_demo | ✅ PASS | insmod 成功 |
+| Ch09 | watchdog_demo | ✅ PASS | /dev/watchdog 创建 |
+| Ch10 | rtc_demo | ✅ PASS | /dev/rtc 创建 |
+| Ch11 | pwm_demo | ✅ PASS | /sys/class/pwm 条目创建 |
+| Ch12 | dma_demo | ✅ PASS | insmod 成功 |
+| Ch13 | snull | ✅ PASS | 网络接口注册 |
+| Ch14 | eth_mac | ✅ PASS | 网络接口注册 |
+| Ch15 | i2c_master + i2c_slave | ✅ PASS | /dev/i2c_virt 创建 |
+| Ch16 | spi_master + spi_slave | ✅ PASS | /dev/spi_virt 创建 |
+| Ch17 | vmem_disk | ✅ PASS | /dev/vmem_disk 创建 |
+| Ch18 | mmc_virt | ✅ PASS | mmc_host 注册 |
 
 ### 可选工具（用于运行时验证）
 

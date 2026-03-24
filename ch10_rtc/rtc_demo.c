@@ -62,7 +62,11 @@ static struct virt_rtc_priv *g_priv;
  */
 static int virt_rtc_read_time(struct device *dev, struct rtc_time *tm)
 {
-	struct virt_rtc_priv *priv = dev_get_drvdata(dev);
+	/*
+	 * rtc_class_ops 回调中的 dev 是 rtc_device->dev。
+	 * 使用全局变量 g_priv 直接获取 priv，避免通过 dev 间接获取可能导致的 NULL 指针问题。
+	 */
+	struct virt_rtc_priv *priv = g_priv;
 	struct timespec64 ts;
 
 	ktime_get_real_ts64(&ts);
@@ -79,7 +83,7 @@ static int virt_rtc_read_time(struct device *dev, struct rtc_time *tm)
  */
 static int virt_rtc_set_time(struct device *dev, struct rtc_time *tm)
 {
-	struct virt_rtc_priv *priv = dev_get_drvdata(dev);
+	struct virt_rtc_priv *priv = g_priv;
 	struct timespec64 ts;
 	time64_t new_time;
 
@@ -111,14 +115,14 @@ static enum hrtimer_restart virt_rtc_alarm_fn(struct hrtimer *timer)
 
 static int virt_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
-	struct virt_rtc_priv *priv = dev_get_drvdata(dev);
+	struct virt_rtc_priv *priv = g_priv;
 	*alrm = priv->alarm;
 	return 0;
 }
 
 static int virt_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
-	struct virt_rtc_priv *priv = dev_get_drvdata(dev);
+	struct virt_rtc_priv *priv = g_priv;
 	struct timespec64 now;
 	time64_t alarm_time, now_time;
 	s64 delta_ns;
@@ -191,12 +195,18 @@ static int virt_rtc_probe(struct platform_device *pdev)
 	priv->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
 	priv->rtc->range_max = RTC_TIMESTAMP_END_2099;
 
+	/*
+	 * 必须在 devm_rtc_register_device 之前设置 drvdata。
+	 * 原因：注册时内核会立即调用 read_time 读取当前时间，
+	 * 此时如果 drvdata 未设置，则 to_rtc_device(dev)->dev.parent 的 drvdata 为 NULL，
+	 * 导致 virt_rtc_read_time 中的 NULL 指针解引用。
+	 */
+	dev_set_drvdata(&pdev->dev, priv);
+	g_priv = priv;
+
 	ret = devm_rtc_register_device(priv->rtc);
 	if (ret)
 		return ret;
-
-	dev_set_drvdata(&pdev->dev, priv);
-	g_priv = priv;
 
 	dev_info(&pdev->dev, "probed, /dev/%s created\n",
 		 dev_name(&priv->rtc->dev));

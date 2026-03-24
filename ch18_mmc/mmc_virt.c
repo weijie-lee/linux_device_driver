@@ -228,15 +228,32 @@ static const struct mmc_host_ops mmc_virt_ops = {
 
 static struct mmc_virt_host *g_virt;
 
+static struct platform_device *g_pdev;
+
 static int __init mmc_virt_init(void)
 {
 	struct mmc_host      *mmc;
 	struct mmc_virt_host *priv;
 	int ret;
 
-	mmc = mmc_alloc_host(sizeof(*priv), NULL);
-	if (!mmc)
+	/*
+	 * mmc_alloc_host 需要一个有效的 struct device 指针（用于 devm_ 内存管理）。
+	 * 创建一个虚拟 platform_device 作为 parent，避免传 NULL 导致的 NULL 指针解引用。
+	 */
+	g_pdev = platform_device_alloc(DRIVER_NAME, -1);
+	if (!g_pdev)
 		return -ENOMEM;
+	ret = platform_device_add(g_pdev);
+	if (ret) {
+		platform_device_put(g_pdev);
+		return ret;
+	}
+
+	mmc = mmc_alloc_host(sizeof(*priv), &g_pdev->dev);
+	if (!mmc) {
+		platform_device_unregister(g_pdev);
+		return -ENOMEM;
+	}
 
 	priv = mmc_priv(mmc);
 	priv->mmc       = mmc;
@@ -287,6 +304,7 @@ static void __exit mmc_virt_exit(void)
 	mmc_remove_host(mmc);
 	vfree(g_virt->card_data);
 	mmc_free_host(mmc);
+	platform_device_unregister(g_pdev);
 	pr_info("mmc_virt: module unloaded\n");
 }
 
