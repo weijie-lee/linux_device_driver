@@ -6,8 +6,11 @@
 
 ## 📁 目录结构
 
+> **新手建议**：先阅读 [framework/README.md](./framework/README.md) 了解 Linux 驱动开发的通用框架与核心机制，再逐个阅读各驱动目录的代码。
+
 | 目录 | 内容 | 对应章节 |
 |------|------|----------|
+| [**framework**](./framework/) | **Linux 驱动实现框架全景指南（含通用模板）** | **必读** |
 | [container_of](./container_of/) | container_of 宏使用演示 | 基础 |
 | [linked_lists](./linked_lists/) | 内核链表使用示例 | 基础 |
 | [kfifo](./kfifo/) | 内核 kfifo 环形缓冲使用 | 基础 |
@@ -85,6 +88,7 @@ sudo mount /dev/mmcblk0 /mnt
 
 每个模块目录下都有独立的 README，包含知识点说明、代码结构讲解和完整验证步骤：
 
+- [**framework/README**](./framework/README.md) — **Linux 驱动框架全景（字符/平台/总线/网络/块设备框架、中断、内存、调试）**
 - [spi_driver/README](./spi_driver/README.md) — SPI master/slave 架构图、loopback 验证
 - [i2c_driver/README](./i2c_driver/README.md) — I2C 事务类型、i2cdetect/i2cdump 验证
 - [eth_driver/README](./eth_driver/README.md) — NAPI 原理、ethtool/tcpdump 验证
