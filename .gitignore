@@ -16,3 +16,13 @@
 .idea/
 # Backup files
 *.bak
+
+# QEMU test artifacts (generated at runtime)
+qemu_test/output/rootfs/
+qemu_test/output/initramfs.cpio.gz
+qemu_test/output/qemu_serial.log
+qemu_test/output/test_summary.txt
+qemu_test/output/build.log
+
+# Build logs
+*.log

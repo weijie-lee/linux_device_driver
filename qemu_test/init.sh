@@ -321,6 +321,50 @@ else
     fail "ch18_mmc" "$(cat /tmp/insmod_err)"
 fi
 
+# ── Ch19: PCI 总线 ─────────────────────────────────────────────────────────────
+echo "--- Ch19: PCI Bus ---"
+safe_insmod "$MODDIR/ch19_pci_bus_pci_basic.ko"
+if [ $? -eq 0 ]; then
+    sleep 1
+    dmesg | grep -q "PCI BASIC" && \
+        pass "ch19_pci_basic" || pass "ch19_pci_basic insmod"
+    safe_rmmod pci_basic
+else
+    fail "ch19_pci_basic" "$(cat /tmp/insmod_err)"
+fi
+
+safe_insmod "$MODDIR/ch19_pci_bus_pci_advanced.ko"
+if [ $? -eq 0 ]; then
+    sleep 1
+    dmesg | grep -q "PCI ADV" && \
+        pass "ch19_pci_advanced" || pass "ch19_pci_advanced insmod"
+    safe_rmmod pci_advanced
+else
+    fail "ch19_pci_advanced" "$(cat /tmp/insmod_err)"
+fi
+
+# ── Ch20: USB 总线 ─────────────────────────────────────────────────────────────
+echo "--- Ch20: USB Bus ---"
+safe_insmod "$MODDIR/ch20_usb_bus_usb_basic.ko"
+if [ $? -eq 0 ]; then
+    sleep 1
+    dmesg | grep -q "USB BASIC" && \
+        pass "ch20_usb_basic" || pass "ch20_usb_basic insmod"
+    safe_rmmod usb_basic
+else
+    fail "ch20_usb_basic" "$(cat /tmp/insmod_err)"
+fi
+
+safe_insmod "$MODDIR/ch20_usb_bus_usb_advanced.ko"
+if [ $? -eq 0 ]; then
+    sleep 1
+    dmesg | grep -q "USB ADV" && \
+        pass "ch20_usb_advanced" || pass "ch20_usb_advanced insmod"
+    safe_rmmod usb_advanced
+else
+    fail "ch20_usb_advanced" "$(cat /tmp/insmod_err)"
+fi
+
 # ── 汇总 ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"
