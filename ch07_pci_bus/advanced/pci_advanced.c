@@ -234,6 +234,13 @@ static int pci_advanced_probe(struct pci_dev *pdev,
 		}
 	}
 
+	/* 设置 DMA 掩码（必须在 DMA 分配前完成） */
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+	if (ret) {
+		pr_err("[PCI ADV] Failed to set DMA mask\n");
+		goto err_unmap;
+	}
+
 	/* 分配 DMA 缓冲区 */
 	dev->dma_size = 4096;
 	dev->dma_buf = dma_alloc_coherent(&pdev->dev, dev->dma_size,
@@ -245,13 +252,6 @@ static int pci_advanced_probe(struct pci_dev *pdev,
 	}
 	pr_info("[PCI ADV] DMA buffer allocated: virt=%p phys=0x%llx\n",
 		dev->dma_buf, (unsigned long long)dev->dma_addr);
-
-	/* 设置 DMA 掩码 */
-	ret = dma_set_mask(&pdev->dev, DMA_BIT_MASK(32));
-	if (ret) {
-		pr_err("[PCI ADV] Failed to set DMA mask\n");
-		goto err_dma_free;
-	}
 
 	/* 注册字符设备 */
 	ret = alloc_chrdev_region(&dev->devno, 0, 1, PCI_ADVANCED_NAME);
@@ -296,6 +296,7 @@ static int pci_advanced_probe(struct pci_dev *pdev,
 				  IRQF_SHARED, "pci_advanced", dev);
 		if (ret) {
 			pr_warn("[PCI ADV] Failed to request IRQ %d\n", dev->irq);
+			dev->irq = 0; /* 确保 remove() 不会调用 free_irq */
 		} else {
 			pr_info("[PCI ADV] IRQ %d registered\n", dev->irq);
 		}

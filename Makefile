@@ -23,7 +23,9 @@ CHAPTERS := \
 	ch15_i2c \
 	ch16_spi \
 	ch17_block \
-	ch18_mmc
+	ch18_mmc \
+	ch19_pci_bus \
+	ch20_usb_bus
 
 .PHONY: all clean test help $(CHAPTERS)
 
