@@ -5,11 +5,10 @@ iPXE (https://ipxe.org) 00:02.0 CA00 PCI2.10 PnP PMM+1FF8B0D0+1FECB0D0 CA00
 Press Ctrl-B to configure iPXE (PCI 00:02.0)...                                                                               
 
 
-Booting from ROM...
-c[?7l[2J============================================
+Booting from ROM..c[?7l[2J============================================
  Linux Driver Module Test Suite
  Kernel: 5.15.0-173-generic
- Date  : Tue Mar 24 07:41:16 UTC 2026
+ Date  : Wed Mar 25 06:17:53 UTC 2026
 ============================================
 --- Ch01: kfifo ---
 [PASS] ch01_kfifo insmod+rmmod
@@ -47,13 +46,19 @@ Booting from ROM...
 [PASS] ch17_vmem_disk dev
 --- Ch18: mmc ---
 [PASS] ch18_mmc host
+--- Ch19: PCI Bus ---
+[PASS] ch19_pci_basic
+[PASS] ch19_pci_advanced
+--- Ch20: USB Bus ---
+[PASS] ch20_usb_basic
+[PASS] ch20_usb_advanced
 
 ============================================
  TEST RESULTS SUMMARY
 ============================================
- PASS: 18
+ PASS: 22
  FAIL: 0
- TOTAL: 18
+ TOTAL: 22
 ============================================
 QEMU_TEST_DONE
-[   23.167547] reboot: Power down
+[   27.781079] reboot: Power down

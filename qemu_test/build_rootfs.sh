@@ -182,6 +182,8 @@ declare -A KO_MAP=(
     ["ch16_spi"]="spi_master spi_slave"
     ["ch17_block"]="vmem_disk"
     ["ch18_mmc"]="mmc_virt"
+    ["ch19_pci_bus"]="pci_basic pci_advanced"
+    ["ch20_usb_bus"]="usb_basic usb_advanced"
 )
 
 for ch_dir in "${!KO_MAP[@]}"; do
