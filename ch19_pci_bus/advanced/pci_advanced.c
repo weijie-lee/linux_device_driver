@@ -62,7 +62,6 @@ struct pci_advanced_dev {
 };
 
 static struct class *pci_advanced_class;
-static dev_t pci_advanced_devno;
 
 /*
  * 中断处理函数
@@ -72,7 +71,7 @@ static irqreturn_t pci_advanced_irq_handler(int irq, void *dev_id)
 	struct pci_advanced_dev *dev = dev_id;
 	
 	dev->irq_count++;
-	pr_info("[PCI ADV] IRQ %d received (count: %lu)\n", irq, dev->irq_count);
+	pr_info_ratelimited("[PCI ADV] IRQ %d received (count: %lu)\n", irq, dev->irq_count);
 	
 	return IRQ_HANDLED;
 }
@@ -211,6 +210,9 @@ static int pci_advanced_probe(struct pci_dev *pdev,
 		return ret;
 	}
 
+	/* 启用 PCI 设备的总线主控功能（DMA 必需） */
+	pci_set_master(pdev);
+
 	/* 请求 PCI 资源 */
 	ret = pci_request_regions(pdev, "pci_advanced");
 	if (ret) {
@@ -276,8 +278,16 @@ static int pci_advanced_probe(struct pci_dev *pdev,
 	}
 
 	/* 创建设备节点 */
-	device_create(pci_advanced_class, NULL, dev->devno, NULL,
-		      "%s", PCI_ADVANCED_NAME);
+	{
+		struct device *device;
+		device = device_create(pci_advanced_class, NULL, dev->devno, NULL,
+				       "%s", PCI_ADVANCED_NAME);
+		if (IS_ERR(device)) {
+			pr_err("[PCI ADV] Failed to create device node\n");
+			ret = PTR_ERR(device);
+			goto err_cdev_del;
+		}
+	}
 
 	/* 请求 IRQ */
 	dev->irq = pdev->irq;

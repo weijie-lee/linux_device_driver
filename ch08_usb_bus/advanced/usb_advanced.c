@@ -75,74 +75,8 @@ struct usb_advanced_dev {
 };
 
 static struct class *usb_advanced_class;
-static dev_t usb_advanced_devno;
 
-/*
- * Bulk IN URB 完成回调
- */
-static void usb_advanced_bulk_in_callback(struct urb *urb)
-{
-	struct usb_advanced_dev *dev = urb->context;
-
-	if (urb->status) {
-		if (urb->status != -ENOENT && urb->status != -ECONNRESET &&
-		    urb->status != -ESHUTDOWN) {
-			pr_warn("[USB ADV] Bulk IN error: %d\n", urb->status);
-		}
-		return;
-	}
-
-	dev->bulk_in_count++;
-	pr_info("[USB ADV] Bulk IN completed: %d bytes (count: %lu)\n",
-		urb->actual_length, dev->bulk_in_count);
-}
-
-/*
- * Bulk OUT URB 完成回调
- */
-static void usb_advanced_bulk_out_callback(struct urb *urb)
-{
-	struct usb_advanced_dev *dev = urb->context;
-
-	if (urb->status) {
-		if (urb->status != -ENOENT && urb->status != -ECONNRESET &&
-		    urb->status != -ESHUTDOWN) {
-			pr_warn("[USB ADV] Bulk OUT error: %d\n", urb->status);
-		}
-		return;
-	}
-
-	dev->bulk_out_count++;
-	pr_info("[USB ADV] Bulk OUT completed: %d bytes (count: %lu)\n",
-		urb->actual_length, dev->bulk_out_count);
-}
-
-/*
- * 中断 IN URB 完成回调
- */
-static void usb_advanced_int_in_callback(struct urb *urb)
-{
-	struct usb_advanced_dev *dev = urb->context;
-	int ret;
-
-	if (urb->status) {
-		if (urb->status != -ENOENT && urb->status != -ECONNRESET &&
-		    urb->status != -ESHUTDOWN) {
-			pr_warn("[USB ADV] Interrupt IN error: %d\n", urb->status);
-		}
-		return;
-	}
-
-	dev->int_in_count++;
-	pr_info("[USB ADV] Interrupt IN completed: %d bytes (count: %lu)\n",
-		urb->actual_length, dev->int_in_count);
-
-	/* 重新提交 URB 以继续接收中断 */
-	ret = usb_submit_urb(urb, GFP_ATOMIC);
-	if (ret) {
-		pr_err("[USB ADV] Failed to resubmit interrupt URB: %d\n", ret);
-	}
-}
+/* URB 回调函数仅供演示使用，当前不使用 */
 
 /*
  * 字符设备 open 函数
@@ -373,8 +307,16 @@ static int usb_advanced_probe(struct usb_interface *interface,
 	}
 
 	/* 创建设备节点 */
-	device_create(usb_advanced_class, NULL, dev->devno, NULL,
-		      "%s", USB_ADVANCED_NAME);
+	{
+		struct device *device;
+		device = device_create(usb_advanced_class, NULL, dev->devno, NULL,
+				       "%s", USB_ADVANCED_NAME);
+		if (IS_ERR(device)) {
+			pr_err("[USB ADV] Failed to create device node\n");
+			ret = PTR_ERR(device);
+			goto error_cdev_del;
+		}
+	}
 
 	usb_set_intfdata(interface, dev);
 

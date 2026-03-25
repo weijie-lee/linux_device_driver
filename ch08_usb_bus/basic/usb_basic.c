@@ -43,21 +43,6 @@ struct usb_basic_dev {
 };
 
 /*
- * USB 中断完成回调函数
- */
-static void usb_basic_bulk_callback(struct urb *urb)
-{
-	struct usb_basic_dev *dev = urb->context;
-
-	if (urb->status) {
-		pr_warn("[USB BASIC] Bulk callback error: %d\n", urb->status);
-		return;
-	}
-
-	pr_info("[USB BASIC] Bulk transfer completed: %d bytes\n", urb->actual_length);
-}
-
-/*
  * USB 设备探测函数
  * 当 USB 总线发现匹配的设备时调用
  */

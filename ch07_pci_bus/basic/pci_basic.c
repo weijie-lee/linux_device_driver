@@ -63,6 +63,9 @@ static int pci_basic_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return ret;
 	}
 
+	/* 启用 PCI 设备的总线主控功能（DMA 必需） */
+	pci_set_master(pdev);
+
 	/* 请求 PCI 资源 */
 	ret = pci_request_regions(pdev, "pci_basic");
 	if (ret) {
