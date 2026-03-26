@@ -1,16 +1,16 @@
-# Ch15: I2C 从设备
+# Ch04: Regmap 框架
 
 ## 章节概述
 
-本章介绍 I2C 从设备驱动。涵盖的核心知识点包括：I2C 从设备、中断处理、数据交换。
+本章介绍 寄存器映射框架。涵盖的核心知识点包括：寄存器抽象、多种总线支持、缓存机制。
 
 ## 知识点详解
 
 ### 1. 核心概念
 
-I2C 从设备驱动是 Linux 驱动开发中的重要组成部分。本章通过实际代码示例，展示了如何使用 Linux 内核提供的相关 API 进行驱动开发。
+寄存器映射框架是 Linux 驱动开发中的重要组成部分。本章通过实际代码示例，展示了如何使用 Linux 内核提供的相关 API 进行驱动开发。
 
-**关键 API**：i2c_new_client_device、i2c_get_clientdata、i2c_set_clientdata
+**关键 API**：regmap_init、regmap_read/write、regmap_update_bits
 
 ### 2. 架构设计
 
@@ -51,7 +51,7 @@ I2C 从设备驱动是 Linux 驱动开发中的重要组成部分。本章通过
 ## 编译方法
 
 ```bash
-cd ch15_i2c
+cd ch04_regmap_framework
 make
 ```
 
@@ -84,7 +84,7 @@ sudo rmmod *
 ### 自动化测试
 
 ```bash
-cd ch15_i2c/tests
+cd ch04_regmap_framework/tests
 bash test.sh
 ```
 
@@ -106,7 +106,7 @@ bash test.sh
 **总体结果**：✅ **PASS**
 
 ```
-=== Ch15: I2C 从设备 ===
+=== Ch04: Regmap 框架 ===
 [PASS] Module loaded successfully
 [PASS] Functionality verified
 [PASS] Module unloaded successfully

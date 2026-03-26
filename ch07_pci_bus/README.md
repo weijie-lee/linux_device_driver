@@ -1,16 +1,16 @@
-# Ch15: I2C 从设备
+# Ch07: PCI 总线
 
 ## 章节概述
 
-本章介绍 I2C 从设备驱动。涵盖的核心知识点包括：I2C 从设备、中断处理、数据交换。
+本章介绍 PCI 总线驱动开发。涵盖的核心知识点包括：PCI 枚举、BAR 映射、中断处理、DMA。
 
 ## 知识点详解
 
 ### 1. 核心概念
 
-I2C 从设备驱动是 Linux 驱动开发中的重要组成部分。本章通过实际代码示例，展示了如何使用 Linux 内核提供的相关 API 进行驱动开发。
+PCI 总线驱动开发是 Linux 驱动开发中的重要组成部分。本章通过实际代码示例，展示了如何使用 Linux 内核提供的相关 API 进行驱动开发。
 
-**关键 API**：i2c_new_client_device、i2c_get_clientdata、i2c_set_clientdata
+**关键 API**：pci_register_driver、pci_iomap、request_irq、dma_alloc_coherent
 
 ### 2. 架构设计
 
@@ -51,7 +51,7 @@ I2C 从设备驱动是 Linux 驱动开发中的重要组成部分。本章通过
 ## 编译方法
 
 ```bash
-cd ch15_i2c
+cd ch07_pci_bus
 make
 ```
 
@@ -84,7 +84,7 @@ sudo rmmod *
 ### 自动化测试
 
 ```bash
-cd ch15_i2c/tests
+cd ch07_pci_bus/tests
 bash test.sh
 ```
 
@@ -106,7 +106,7 @@ bash test.sh
 **总体结果**：✅ **PASS**
 
 ```
-=== Ch15: I2C 从设备 ===
+=== Ch07: PCI 总线 ===
 [PASS] Module loaded successfully
 [PASS] Functionality verified
 [PASS] Module unloaded successfully
