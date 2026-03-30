@@ -325,7 +325,7 @@ static int __init global_mem_init(void)
 	 * class_create  在 /sys/class/ 下创建设备类别目录，供 udev 识别。
 	 * device_create 在 /dev/ 下自动创建设备文件（触发 udev 规则）。
 	 */
-	globalmem_class = class_create(THIS_MODULE, "global_mem_class");
+	globalmem_class = class_create("global_mem_class");
 	if (IS_ERR(globalmem_class)) {
 		ret = PTR_ERR(globalmem_class);
 		pr_err("globalmem: class_create failed, ret=%d\n", ret);

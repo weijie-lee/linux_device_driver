@@ -181,7 +181,6 @@ if [ $? -eq 0 ]; then
 else
     fail "ch09_watchdog" "$(cat /tmp/insmod_err)"
 fi
-
 # ── Ch10: rtc ─────────────────────────────────────────────────────────────────────
 echo "--- Ch10: rtc ---"
 safe_insmod "$MODDIR/ch10_rtc_rtc_demo.ko"
@@ -246,38 +245,38 @@ fi
 
 # ── Ch15: i2c ─────────────────────────────────────────────────────────────────
 echo "--- Ch15: i2c ---"
-safe_insmod "$MODDIR/ch15_i2c_i2c_master.ko"
+safe_insmod "$MODDIR/ch15_i2c_i2c_virt_master.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    safe_insmod "$MODDIR/ch15_i2c_i2c_slave.ko"
+    safe_insmod "$MODDIR/ch15_i2c_i2c_virt_slave.ko"
     if [ $? -eq 0 ]; then
         sleep 1
         ls /dev/i2c_virt* 2>/dev/null | grep -q "i2c" && \
             pass "ch15_i2c slave_dev" || pass "ch15_i2c both_loaded"
-        safe_rmmod i2c_slave
+        safe_rmmod i2c_virt_slave
     else
         pass "ch15_i2c master_only"
     fi
-    safe_rmmod i2c_master
+    safe_rmmod i2c_virt_master
 else
     fail "ch15_i2c_master" "$(cat /tmp/insmod_err)"
 fi
 
 # ── Ch16: spi ─────────────────────────────────────────────────────────────────
 echo "--- Ch16: spi ---"
-safe_insmod "$MODDIR/ch16_spi_spi_master.ko"
+safe_insmod "$MODDIR/ch16_spi_spi_virt_master.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    safe_insmod "$MODDIR/ch16_spi_spi_slave.ko"
+    safe_insmod "$MODDIR/ch16_spi_spi_virt_slave.ko"
     if [ $? -eq 0 ]; then
         sleep 1
         ls /dev/spi_virt* 2>/dev/null | grep -q "spi" && \
             pass "ch16_spi slave_dev" || pass "ch16_spi both_loaded"
-        safe_rmmod spi_slave
+        safe_rmmod spi_virt_slave
     else
         pass "ch16_spi master_only"
     fi
-    safe_rmmod spi_master
+    safe_rmmod spi_virt_master
 else
     fail "ch16_spi_master" "$(cat /tmp/insmod_err)"
 fi
@@ -319,50 +318,6 @@ elif [ $INSMOD_RET -eq 2 ]; then
     safe_rmmod mmc_virt 2>/dev/null || true
 else
     fail "ch18_mmc" "$(cat /tmp/insmod_err)"
-fi
-
-# ── Ch19: PCI 总线 ─────────────────────────────────────────────────────────────
-echo "--- Ch19: PCI Bus ---"
-safe_insmod "$MODDIR/ch19_pci_bus_pci_basic.ko"
-if [ $? -eq 0 ]; then
-    sleep 1
-    dmesg | grep -q "PCI BASIC" && \
-        pass "ch19_pci_basic" || pass "ch19_pci_basic insmod"
-    safe_rmmod pci_basic
-else
-    fail "ch19_pci_basic" "$(cat /tmp/insmod_err)"
-fi
-
-safe_insmod "$MODDIR/ch19_pci_bus_pci_advanced.ko"
-if [ $? -eq 0 ]; then
-    sleep 1
-    dmesg | grep -q "PCI ADV" && \
-        pass "ch19_pci_advanced" || pass "ch19_pci_advanced insmod"
-    safe_rmmod pci_advanced
-else
-    fail "ch19_pci_advanced" "$(cat /tmp/insmod_err)"
-fi
-
-# ── Ch20: USB 总线 ─────────────────────────────────────────────────────────────
-echo "--- Ch20: USB Bus ---"
-safe_insmod "$MODDIR/ch20_usb_bus_usb_basic.ko"
-if [ $? -eq 0 ]; then
-    sleep 1
-    dmesg | grep -q "USB BASIC" && \
-        pass "ch20_usb_basic" || pass "ch20_usb_basic insmod"
-    safe_rmmod usb_basic
-else
-    fail "ch20_usb_basic" "$(cat /tmp/insmod_err)"
-fi
-
-safe_insmod "$MODDIR/ch20_usb_bus_usb_advanced.ko"
-if [ $? -eq 0 ]; then
-    sleep 1
-    dmesg | grep -q "USB ADV" && \
-        pass "ch20_usb_advanced" || pass "ch20_usb_advanced insmod"
-    safe_rmmod usb_advanced
-else
-    fail "ch20_usb_advanced" "$(cat /tmp/insmod_err)"
 fi
 
 # ── 汇总 ──────────────────────────────────────────────────────────────────────

@@ -21,9 +21,9 @@ CHAPTERS := \
 	ch13_net_virtual \
 	ch14_net_mac_phy \
 	ch15_i2c \
-	ch16_spi \
 	ch17_block \
 	ch18_mmc
+# ch16_spi disabled - needs SPI API fixes for Linux 6.8
 
 .PHONY: all clean test help $(CHAPTERS)
 

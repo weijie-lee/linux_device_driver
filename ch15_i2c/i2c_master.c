@@ -126,7 +126,7 @@ static int __init i2c_virt_master_init(void)
 	g_master->adapter.class   = I2C_CLASS_HWMON;
 	g_master->adapter.algo    = &i2c_virt_algo;
 	g_master->adapter.nr      = -1;		/* dynamic bus number */
-	strlcpy(g_master->adapter.name, "i2c-virt-master",
+	strscpy(g_master->adapter.name, "i2c-virt-master",
 		sizeof(g_master->adapter.name));
 
 	ret = i2c_add_adapter(&g_master->adapter);

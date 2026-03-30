@@ -195,7 +195,7 @@ static int __init second_init(void)
 	}
 
 	/* 步骤 4：创建设备类（使 udev 能自动创建 /dev 节点） */
-	seconds_class = class_create(THIS_MODULE, "seconds_class");
+	seconds_class = class_create("seconds_class");
 	if (IS_ERR(seconds_class)) {
 		ret = PTR_ERR(seconds_class);
 		pr_err("second: class_create failed, ret=%d\n", ret);

@@ -167,8 +167,7 @@ static const struct file_operations i2c_virt_fops = {
 /*  I2C driver probe / remove                                           */
 /* ------------------------------------------------------------------ */
 
-static int i2c_virt_slave_probe(struct i2c_client *client,
-				const struct i2c_device_id *id)
+static int i2c_virt_slave_probe(struct i2c_client *client)
 {
 	struct i2c_virt_client *priv;
 	int ret;
@@ -198,7 +197,7 @@ static int i2c_virt_slave_probe(struct i2c_client *client,
 	if (ret)
 		goto err_unreg;
 
-	i2c_class = class_create(THIS_MODULE, "i2c_virt");
+	i2c_class = class_create("i2c_virt");
 	if (IS_ERR(i2c_class)) {
 		ret = PTR_ERR(i2c_class);
 		goto err_cdev;
@@ -229,7 +228,7 @@ err_free:
 	return ret;
 }
 
-static int i2c_virt_slave_remove(struct i2c_client *client)
+static void i2c_virt_slave_remove(struct i2c_client *client)
 {
 	struct i2c_virt_client *priv = i2c_get_clientdata(client);
 
@@ -239,7 +238,6 @@ static int i2c_virt_slave_remove(struct i2c_client *client)
 	unregister_chrdev_region(i2c_devno, 1);
 	kfree(priv);
 	dev_info(&client->dev, "I2C slave removed\n");
-	return 0;
 }
 
 static const struct i2c_device_id i2c_virt_id[] = {

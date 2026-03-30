@@ -25,7 +25,6 @@
 #include <linux/errno.h>
 #include <linux/types.h>
 #include <linux/vmalloc.h>
-#include <linux/genhd.h>
 #include <linux/blkdev.h>
 #include <linux/blk-mq.h>
 #include <linux/hdreg.h>

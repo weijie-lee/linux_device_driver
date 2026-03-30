@@ -205,13 +205,13 @@ static void virt_mac_get_stats64(struct net_device *dev,
 	unsigned int start;
 
 	do {
-		start = u64_stats_fetch_begin_irq(&priv->stats.syncp);
+		start = u64_stats_fetch_begin(&priv->stats.syncp);
 		stats->rx_packets = priv->stats.rx_packets;
 		stats->rx_bytes   = priv->stats.rx_bytes;
 		stats->tx_packets = priv->stats.tx_packets;
 		stats->tx_bytes   = priv->stats.tx_bytes;
 		stats->rx_dropped = priv->stats.rx_dropped;
-	} while (u64_stats_fetch_retry_irq(&priv->stats.syncp, start));
+	} while (u64_stats_fetch_retry(&priv->stats.syncp, start));
 }
 
 static void virt_mac_tx_timeout(struct net_device *dev, unsigned int txqueue)
@@ -259,9 +259,9 @@ static u32 virt_mac_get_link(struct net_device *dev)
 static void virt_mac_get_drvinfo(struct net_device *dev,
 				 struct ethtool_drvinfo *info)
 {
-	strlcpy(info->driver,  DRIVER_NAME,       sizeof(info->driver));
-	strlcpy(info->version, "1.0",             sizeof(info->version));
-	strlcpy(info->bus_info, "virtual",        sizeof(info->bus_info));
+	strscpy(info->driver,  DRIVER_NAME,       sizeof(info->driver));
+	strscpy(info->version, "1.0",             sizeof(info->version));
+	strscpy(info->bus_info, "virtual",        sizeof(info->bus_info));
 }
 
 static const struct ethtool_ops virt_mac_ethtool_ops = {
@@ -286,7 +286,7 @@ static int __init virt_mac_init(void)
 	if (!virt_dev)
 		return -ENOMEM;
 
-	strlcpy(virt_dev->name, "veth0_mac", IFNAMSIZ);
+	strscpy(virt_dev->name, "veth0_mac", IFNAMSIZ);
 
 	priv = netdev_priv(virt_dev);
 	priv->dev = virt_dev;
@@ -306,7 +306,7 @@ static int __init virt_mac_init(void)
 	virt_dev->features       |= NETIF_F_LOOPBACK;
 
 	/* Register NAPI before register_netdev */
-	netif_napi_add(virt_dev, &priv->napi, virt_mac_poll, 64);
+	netif_napi_add(virt_dev, &priv->napi, virt_mac_poll);
 
 	ret = register_netdev(virt_dev);
 	if (ret) {

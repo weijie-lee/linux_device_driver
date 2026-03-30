@@ -119,7 +119,7 @@ static int virt_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 /*
  * virt_pwm_get_state — 读取当前 PWM 状态
  */
-static void virt_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
+static int virt_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
 				struct pwm_state *state)
 {
 	struct virt_pwm_chip *vchip = to_virt_pwm(chip);
@@ -129,6 +129,7 @@ static void virt_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
 	state->duty_cycle = ch->duty_cycle_ns;
 	state->polarity   = PWM_POLARITY_NORMAL;
 	state->enabled    = ch->enabled;
+	return 0;
 }
 
 static const struct pwm_ops virt_pwm_ops = {
@@ -136,7 +137,6 @@ static const struct pwm_ops virt_pwm_ops = {
 	.free      = virt_pwm_free,
 	.apply     = virt_pwm_apply,
 	.get_state = virt_pwm_get_state,
-	.owner     = THIS_MODULE,
 };
 
 /* ============================================================
@@ -171,8 +171,7 @@ static int virt_pwm_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "probed, %d PWM channels registered\n",
 		 PWM_CHANNELS);
-	dev_info(&pdev->dev, "sysfs: /sys/class/pwm/pwmchip%d/\n",
-		 vchip->chip.base);
+	dev_info(&pdev->dev, "sysfs: /sys/class/pwm/pwmchipX/ created\n");
 	return 0;
 }
 

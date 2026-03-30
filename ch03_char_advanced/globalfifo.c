@@ -414,7 +414,7 @@ static int __init global_mem_probe(struct platform_device *pdev)
 		}
 	}
 
-	globalmem_class = class_create(THIS_MODULE, "global_mem_class");
+	globalmem_class = class_create("global_mem_class");
 	if (IS_ERR(globalmem_class)) {
 		ret = PTR_ERR(globalmem_class);
 		pr_err("globalfifo: class_create failed, ret=%d\n", ret);

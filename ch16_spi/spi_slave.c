@@ -151,7 +151,7 @@ static int spi_virt_slave_probe(struct spi_device *spi)
 		goto err_unreg;
 	}
 
-	spi_class = class_create(THIS_MODULE, "spi_virt");
+	spi_class = class_create("spi_virt");
 	if (IS_ERR(spi_class)) {
 		ret = PTR_ERR(spi_class);
 		goto err_cdev;
@@ -173,7 +173,7 @@ err_free:
 	return ret;
 }
 
-static int spi_virt_slave_remove(struct spi_device *spi)
+static void spi_virt_slave_remove(struct spi_device *spi)
 {
 	struct spi_virt_slave *slave = spi_get_drvdata(spi);
 
@@ -183,7 +183,6 @@ static int spi_virt_slave_remove(struct spi_device *spi)
 	unregister_chrdev_region(spi_devno, 1);
 	kfree(slave);
 	dev_info(&spi->dev, "SPI slave removed\n");
-	return 0;
 }
 
 /* Match table: the master will instantiate a device with this modalias */
@@ -229,7 +228,7 @@ static int __init spi_virt_slave_init(void)
 	}
 
 	/* Manually instantiate the SPI device on the virtual master's bus */
-	master = spi_busnum_to_master(0);
+	master = spi_busnum_to_controller(0);
 	if (!master) {
 		pr_err("spi_virt_slave: spi master 0 not found — load spi_master.ko first\n");
 		spi_unregister_driver(&spi_virt_slave_driver);
