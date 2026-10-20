@@ -23,6 +23,16 @@ MODDIR=/lib/modules/driver_test
 PASS=0
 FAIL=0
 
+# 子系统以模块形式编进 5.15 时，先加载依赖 .ko
+if [ -f "$MODDIR/preload.list" ]; then
+    echo "--- preload subsystem modules ---"
+    while read -r ko; do
+        [ -z "$ko" ] && continue
+        insmod "$MODDIR/preload/$ko" 2>/tmp/preload_err || \
+            echo "[WARN] preload $ko: $(cat /tmp/preload_err)"
+    done < "$MODDIR/preload.list"
+fi
+
 # ── 辅助函数 ──────────────────────────────────────────────────────────────────
 pass() {
     echo "[PASS] $1"
@@ -245,38 +255,38 @@ fi
 
 # ── Ch15: i2c ─────────────────────────────────────────────────────────────────
 echo "--- Ch15: i2c ---"
-safe_insmod "$MODDIR/ch15_i2c_i2c_virt_master.ko"
+safe_insmod "$MODDIR/ch15_i2c_i2c_master.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    safe_insmod "$MODDIR/ch15_i2c_i2c_virt_slave.ko"
+    safe_insmod "$MODDIR/ch15_i2c_i2c_slave.ko"
     if [ $? -eq 0 ]; then
         sleep 1
         ls /dev/i2c_virt* 2>/dev/null | grep -q "i2c" && \
             pass "ch15_i2c slave_dev" || pass "ch15_i2c both_loaded"
-        safe_rmmod i2c_virt_slave
+        safe_rmmod i2c_slave
     else
         pass "ch15_i2c master_only"
     fi
-    safe_rmmod i2c_virt_master
+    safe_rmmod i2c_master
 else
     fail "ch15_i2c_master" "$(cat /tmp/insmod_err)"
 fi
 
 # ── Ch16: spi ─────────────────────────────────────────────────────────────────
 echo "--- Ch16: spi ---"
-safe_insmod "$MODDIR/ch16_spi_spi_virt_master.ko"
+safe_insmod "$MODDIR/ch16_spi_spi_master.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    safe_insmod "$MODDIR/ch16_spi_spi_virt_slave.ko"
+    safe_insmod "$MODDIR/ch16_spi_spi_slave.ko"
     if [ $? -eq 0 ]; then
         sleep 1
         ls /dev/spi_virt* 2>/dev/null | grep -q "spi" && \
             pass "ch16_spi slave_dev" || pass "ch16_spi both_loaded"
-        safe_rmmod spi_virt_slave
+        safe_rmmod spi_slave
     else
         pass "ch16_spi master_only"
     fi
-    safe_rmmod spi_virt_master
+    safe_rmmod spi_master
 else
     fail "ch16_spi_master" "$(cat /tmp/insmod_err)"
 fi
@@ -319,6 +329,74 @@ elif [ $INSMOD_RET -eq 2 ]; then
 else
     fail "ch18_mmc" "$(cat /tmp/insmod_err)"
 fi
+
+# ── Ch19–Ch68：PCI/USB 以及补齐的子系统 ─────────────────────────────────────
+test_one() {
+    label="$1"
+    file="$2"
+    mod="$3"
+    echo "--- ${label} ---"
+    safe_insmod "$MODDIR/${file}"
+    if [ $? -eq 0 ]; then
+        pass "${label}"
+        safe_rmmod "${mod}"
+    else
+        fail "${label}" "$(cat /tmp/insmod_err)"
+    fi
+}
+
+test_one "ch19_pci_basic"    "ch19_pci_bus_pci_basic.ko"       pci_basic
+test_one "ch19_pci_advanced" "ch19_pci_bus_pci_advanced.ko"    pci_advanced
+test_one "ch20_usb_basic"    "ch20_usb_bus_usb_basic.ko"       usb_basic
+test_one "ch20_usb_advanced" "ch20_usb_bus_usb_advanced.ko"    usb_advanced
+test_one "ch21_gpio"         "ch21_gpio_virt_gpio.ko"          virt_gpio
+test_one "ch22_pinctrl"      "ch22_pinctrl_virt_pinctrl.ko"    virt_pinctrl
+test_one "ch23_clk"          "ch23_clk_virt_clk.ko"            virt_clk
+test_one "ch24_regulator"    "ch24_regulator_virt_regulator.ko" virt_regulator
+test_one "ch25_reset"        "ch25_reset_virt_reset.ko"        virt_reset
+test_one "ch26_nvmem"        "ch26_nvmem_virt_nvmem.ko"        virt_nvmem
+test_one "ch27_hwmon"        "ch27_hwmon_virt_hwmon.ko"        virt_hwmon
+test_one "ch28_leds"         "ch28_leds_virt_led.ko"           virt_led
+test_one "ch29_thermal"      "ch29_thermal_virt_thermal.ko"    virt_thermal
+test_one "ch30_power"        "ch30_power_virt_psy.ko"          virt_psy
+test_one "ch31_backlight"    "ch31_backlight_virt_backlight.ko" virt_backlight
+test_one "ch32_phy"          "ch32_phy_virt_phy.ko"            virt_phy
+test_one "ch33_pps"          "ch33_pps_virt_pps.ko"            virt_pps
+test_one "ch34_ptp"          "ch34_ptp_virt_ptp.ko"            virt_ptp
+test_one "ch35_tty"          "ch35_tty_virt_tty.ko"            virt_tty
+test_one "ch36_fb"           "ch36_fb_virt_fb.ko"              virt_fb
+test_one "ch37_mfd"          "ch37_mfd_virt_mfd.ko"            virt_mfd
+test_one "ch38_extcon"       "ch38_extcon_virt_extcon.ko"      virt_extcon
+test_one "ch39_scsi"         "ch39_scsi_virt_scsi.ko"          virt_scsi
+test_one "ch40_crypto"       "ch40_crypto_virt_crypto.ko"      virt_crypto
+test_one "ch41_virtio"       "ch41_virtio_virt_virtio.ko"      virt_virtio
+test_one "ch42_remoteproc"   "ch42_remoteproc_virt_rproc.ko"   virt_rproc
+test_one "ch43_devfreq"      "ch43_devfreq_virt_devfreq.ko"    virt_devfreq
+test_one "ch44_dmaengine"    "ch44_dmaengine_virt_dmaeng.ko"   virt_dmaeng
+test_one "ch45_rfkill"       "ch45_rfkill_virt_rfkill.ko"      virt_rfkill
+test_one "ch46_hwspinlock"   "ch46_hwspinlock_virt_hwspin.ko"  virt_hwspin
+test_one "ch47_mailbox"      "ch47_mailbox_virt_mbox.ko"       virt_mbox
+test_one "ch48_powercap"     "ch48_powercap_virt_powercap.ko"  virt_powercap
+test_one "ch49_opp"          "ch49_opp_virt_opp.ko"            virt_opp
+test_one "ch50_mdio"         "ch50_mdio_virt_mdio.ko"          virt_mdio
+test_one "ch51_iio"          "ch51_iio_virt_iio.ko"            virt_iio
+test_one "ch52_alsa"         "ch52_alsa_virt_alsa.ko"          virt_alsa
+test_one "ch53_hid"          "ch53_hid_virt_hid.ko"            virt_hid
+test_one "ch54_mtd"          "ch54_mtd_virt_mtd.ko"            virt_mtd
+test_one "ch55_uio"          "ch55_uio_virt_uio.ko"            virt_uio
+test_one "ch56_w1"           "ch56_w1_virt_w1.ko"              virt_w1
+test_one "ch57_can"          "ch57_can_virt_can.ko"            virt_can
+test_one "ch58_mux"          "ch58_mux_virt_mux.ko"            virt_mux
+test_one "ch59_fpga"         "ch59_fpga_virt_fpga.ko"          virt_fpga
+test_one "ch60_spmi"         "ch60_spmi_virt_spmi.ko"          virt_spmi
+test_one "ch61_i3c"          "ch61_i3c_virt_i3c.ko"            virt_i3c
+test_one "ch62_gnss"         "ch62_gnss_virt_gnss.ko"          virt_gnss
+test_one "ch63_nfc"          "ch63_nfc_virt_nfc.ko"            virt_nfc
+test_one "ch64_bluetooth"    "ch64_bluetooth_virt_bt.ko"       virt_bt
+test_one "ch65_v4l2"         "ch65_v4l2_virt_v4l2.ko"          virt_v4l2
+test_one "ch66_counter"      "ch66_counter_virt_counter.ko"    virt_counter
+test_one "ch67_drm"          "ch67_drm_virt_drm.ko"            virt_drm
+test_one "ch68_interconnect" "ch68_interconnect_virt_icc.ko"   virt_icc
 
 # ── 汇总 ──────────────────────────────────────────────────────────────────────
 echo ""

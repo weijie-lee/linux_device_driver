@@ -15,7 +15,7 @@
 # 选项：
 #   --output-dir <dir>   initramfs/vmlinuz 所在目录（默认：./qemu_test/output）
 #   --log <file>         QEMU 串口输出日志文件（默认：output/qemu_serial.log）
-#   --timeout <secs>     等待测试完成的超时时间（默认：180 秒）
+#   --timeout <secs>     等待测试完成的超时时间（默认：420 秒）
 #   --interactive        交互模式：不自动等待，直接连接串口（调试用）
 #   --kvm                尝试启用 KVM 加速（需要宿主机支持）
 #   --help               显示帮助信息
@@ -41,7 +41,7 @@ die()   { error "$*"; exit 2; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="${SCRIPT_DIR}/output"
 LOG_FILE=""
-TIMEOUT=180
+TIMEOUT=420
 INTERACTIVE=0
 USE_KVM=0
 
@@ -205,10 +205,12 @@ grep -E "^\[PASS\]|\[FAIL\]|\[WARN\]|--- Ch" "${LOG_FILE}" 2>/dev/null | \
 echo ""
 
 # 提取汇总数据
-PASS_COUNT=$(grep -c "^\[PASS\]" "${LOG_FILE}" 2>/dev/null || echo "0")
-FAIL_COUNT=$(grep -c "^\[FAIL\]" "${LOG_FILE}" 2>/dev/null || echo "0")
-PASS_COUNT=$(echo "$PASS_COUNT" | tr -d ' \n')
-FAIL_COUNT=$(echo "$FAIL_COUNT" | tr -d ' \n')
+# grep -c exits 1 when the count is 0, but it still prints 0. Do not append
+# another 0 in that case, or a clean run is reported as FAIL=00.
+PASS_COUNT=$(grep -c "^\[PASS\]" "${LOG_FILE}" 2>/dev/null || true)
+FAIL_COUNT=$(grep -c "^\[FAIL\]" "${LOG_FILE}" 2>/dev/null || true)
+PASS_COUNT=$(echo "${PASS_COUNT:-0}" | tr -d ' \n')
+FAIL_COUNT=$(echo "${FAIL_COUNT:-0}" | tr -d ' \n')
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 
 echo -e "${BOLD}  汇总：PASS=${PASS_COUNT}  FAIL=${FAIL_COUNT}  TOTAL=${TOTAL}${NC}"

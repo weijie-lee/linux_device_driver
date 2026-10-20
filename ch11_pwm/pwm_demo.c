@@ -119,8 +119,8 @@ static int virt_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 /*
  * virt_pwm_get_state — 读取当前 PWM 状态
  */
-static int virt_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
-				struct pwm_state *state)
+static void virt_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
+			       struct pwm_state *state)
 {
 	struct virt_pwm_chip *vchip = to_virt_pwm(chip);
 	struct virt_pwm_channel *ch = &vchip->channels[pwm->hwpwm];
@@ -129,7 +129,6 @@ static int virt_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
 	state->duty_cycle = ch->duty_cycle_ns;
 	state->polarity   = PWM_POLARITY_NORMAL;
 	state->enabled    = ch->enabled;
-	return 0;
 }
 
 static const struct pwm_ops virt_pwm_ops = {

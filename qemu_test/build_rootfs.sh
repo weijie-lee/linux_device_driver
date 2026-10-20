@@ -184,6 +184,54 @@ declare -A KO_MAP=(
     ["ch18_mmc"]="mmc_virt"
     ["ch19_pci_bus"]="pci_basic pci_advanced"
     ["ch20_usb_bus"]="usb_basic usb_advanced"
+    ["ch21_gpio"]="virt_gpio"
+    ["ch22_pinctrl"]="virt_pinctrl"
+    ["ch23_clk"]="virt_clk"
+    ["ch24_regulator"]="virt_regulator"
+    ["ch25_reset"]="virt_reset"
+    ["ch26_nvmem"]="virt_nvmem"
+    ["ch27_hwmon"]="virt_hwmon"
+    ["ch28_leds"]="virt_led"
+    ["ch29_thermal"]="virt_thermal"
+    ["ch30_power"]="virt_psy"
+    ["ch31_backlight"]="virt_backlight"
+    ["ch32_phy"]="virt_phy"
+    ["ch33_pps"]="virt_pps"
+    ["ch34_ptp"]="virt_ptp"
+    ["ch35_tty"]="virt_tty"
+    ["ch36_fb"]="virt_fb"
+    ["ch37_mfd"]="virt_mfd"
+    ["ch38_extcon"]="virt_extcon"
+    ["ch39_scsi"]="virt_scsi"
+    ["ch40_crypto"]="virt_crypto"
+    ["ch41_virtio"]="virt_virtio"
+    ["ch42_remoteproc"]="virt_rproc"
+    ["ch43_devfreq"]="virt_devfreq"
+    ["ch44_dmaengine"]="virt_dmaeng"
+    ["ch45_rfkill"]="virt_rfkill"
+    ["ch46_hwspinlock"]="virt_hwspin"
+    ["ch47_mailbox"]="virt_mbox"
+    ["ch48_powercap"]="virt_powercap"
+    ["ch49_opp"]="virt_opp"
+    ["ch50_mdio"]="virt_mdio"
+    ["ch51_iio"]="virt_iio"
+    ["ch52_alsa"]="virt_alsa"
+    ["ch53_hid"]="virt_hid"
+    ["ch54_mtd"]="virt_mtd"
+    ["ch55_uio"]="virt_uio"
+    ["ch56_w1"]="virt_w1"
+    ["ch57_can"]="virt_can"
+    ["ch58_mux"]="virt_mux"
+    ["ch59_fpga"]="virt_fpga"
+    ["ch60_spmi"]="virt_spmi"
+    ["ch61_i3c"]="virt_i3c"
+    ["ch62_gnss"]="virt_gnss"
+    ["ch63_nfc"]="virt_nfc"
+    ["ch64_bluetooth"]="virt_bt"
+    ["ch65_v4l2"]="virt_v4l2"
+    ["ch66_counter"]="virt_counter"
+    ["ch67_drm"]="virt_drm"
+    ["ch68_interconnect"]="virt_icc"
 )
 
 for ch_dir in "${!KO_MAP[@]}"; do
@@ -208,6 +256,50 @@ ok "共复制 ${KO_COUNT} 个 .ko 文件"
 if [[ -n "${KO_MISSING}" ]]; then
     warn "以下模块未找到（可能编译失败）:${KO_MISSING}"
 fi
+
+# 部分子系统在 5.15 generic 里是模块（=m）。把它们的依赖 .ko
+# 按 modinfo 依赖顺序放进 initramfs，否则 virt_*.ko 会因未知符号加载失败。
+if [[ -z "${KVER_BUILD:-}" ]]; then
+    KVER_BUILD="5.15.0-173-generic"
+fi
+PRELOAD_DIR="${ROOTFS_DIR}/lib/modules/driver_test/preload"
+mkdir -p "${PRELOAD_DIR}"
+declare -A PRE_SEEN=()
+PRE_ORDER=()
+resolve_dep() {
+    local ko="$1"
+    local base deps d f
+    [[ -f "${ko}" ]] || return 0
+    base="$(basename "${ko}")"
+    [[ -n "${PRE_SEEN[${base}]:-}" ]] && return 0
+    PRE_SEEN[${base}]=1
+    deps="$(modinfo -F depends "${ko}" 2>/dev/null || true)"
+    deps="${deps//,/ }"
+    for d in ${deps}; do
+        [[ -z "${d}" ]] && continue
+        f="$(find "/lib/modules/${KVER_BUILD}" -name "${d}.ko" -print -quit 2>/dev/null || true)"
+        if [[ -n "${f}" ]]; then
+            resolve_dep "${f}"
+        else
+            warn "依赖模块未找到: ${d}.ko ($(basename "${ko}"))"
+        fi
+    done
+    if [[ "${ko}" == /lib/modules/* ]]; then
+        PRE_ORDER+=("${ko}")
+    fi
+}
+shopt -s nullglob
+for ko in "${ROOTFS_DIR}/lib/modules/driver_test/"*.ko; do
+    resolve_dep "${ko}"
+done
+shopt -u nullglob
+: > "${ROOTFS_DIR}/lib/modules/driver_test/preload.list"
+for ko in "${PRE_ORDER[@]}"; do
+    base="$(basename "${ko}")"
+    cp "${ko}" "${PRELOAD_DIR}/${base}"
+    echo "${base}" >> "${ROOTFS_DIR}/lib/modules/driver_test/preload.list"
+done
+ok "预加载依赖模块: $(wc -l < "${ROOTFS_DIR}/lib/modules/driver_test/preload.list" | tr -d ' ') 个"
 
 # ── Step 5: 生成 init 脚本 ────────────────────────────────────────────────────
 info "Step 5/5: 生成 init 测试脚本..."

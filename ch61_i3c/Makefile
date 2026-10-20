@@ -1,0 +1,8 @@
+KERNEL_DIR ?= /lib/modules/5.15.0-173-generic/build
+PWD := $(shell pwd)
+obj-m := virt_i3c.o
+all:
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
+clean:
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
+.PHONY: all clean
