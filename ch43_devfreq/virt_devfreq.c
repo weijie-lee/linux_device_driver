@@ -7,6 +7,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/devfreq.h>
+#include <linux/pm_opp.h>
 
 #define DRV_NAME "virt_devfreq"
 
@@ -38,10 +39,28 @@ static struct devfreq_dev_profile virt_profile = {
 	.freq_table = virt_freqs,
 	.max_state = 1,
 };
+static void virt_drop_opp(void *data)
+{
+	dev_pm_opp_remove(data, virt_freqs[0]);
+}
+
 static int virt_probe(struct platform_device *pdev)
 {
 	struct devfreq *df;
+	int ret;
 
+	/*
+	 * 5.15 devfreq_add_device() takes its min/max from the device OPP
+	 * table. A freq_table alone leaves both at 0 and the core returns
+	 * -EINVAL. The devm action is registered first so it runs after
+	 * devm drops the devfreq device.
+	 */
+	ret = dev_pm_opp_add(&pdev->dev, virt_freqs[0], 100000);
+	if (ret)
+		return ret;
+	ret = devm_add_action_or_reset(&pdev->dev, virt_drop_opp, &pdev->dev);
+	if (ret)
+		return ret;
 	df = devm_devfreq_add_device(&pdev->dev, &virt_profile, "performance",
 				     NULL);
 	return PTR_ERR_OR_ZERO(df);

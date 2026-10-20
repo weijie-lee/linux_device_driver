@@ -14,11 +14,31 @@ static int virt_up(struct nfc_dev *dev) { return 0; }
 static int virt_down(struct nfc_dev *dev) { return 0; }
 static int virt_poll(struct nfc_dev *dev, u32 im, u32 tm) { return 0; }
 static void virt_stop(struct nfc_dev *dev) { }
+static int virt_activate(struct nfc_dev *dev, struct nfc_target *target,
+			 u32 protocol)
+{
+	return 0;
+}
+static void virt_deactivate(struct nfc_dev *dev, struct nfc_target *target,
+			    u8 mode)
+{
+}
+static int virt_xceive(struct nfc_dev *dev, struct nfc_target *target,
+		       struct sk_buff *skb, data_exchange_cb_t cb, void *ctx)
+{
+	kfree_skb(skb);
+	if (cb)
+		cb(ctx, NULL, 0);
+	return 0;
+}
 static const struct nfc_ops virt_ops = {
 	.dev_up = virt_up,
 	.dev_down = virt_down,
 	.start_poll = virt_poll,
 	.stop_poll = virt_stop,
+	.activate_target = virt_activate,
+	.deactivate_target = virt_deactivate,
+	.im_transceive = virt_xceive,
 };
 static int virt_probe(struct platform_device *pdev)
 {

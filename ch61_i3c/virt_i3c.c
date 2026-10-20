@@ -7,13 +7,24 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/i3c/master.h>
+#include <linux/i3c/device.h>
 
 #define DRV_NAME "virt_i3c"
 
 struct virt_i3c {
 	struct i3c_master_controller master;
 };
-static int virt_bus_init(struct i3c_master_controller *m) { return 0; }
+static int virt_bus_init(struct i3c_master_controller *m)
+{
+	struct i3c_device_info info = {
+		.dyn_addr = 0x08,
+		.bcr = I3C_BCR_I3C_MASTER,
+		.pid = 0x00feedfaceULL,
+	};
+
+	/* bus_init() must publish the master, or registration returns -EINVAL. */
+	return i3c_master_set_info(m, &info);
+}
 static void virt_bus_cleanup(struct i3c_master_controller *m) { }
 static int virt_daa(struct i3c_master_controller *m) { return 0; }
 static int virt_ccc(struct i3c_master_controller *m, struct i3c_ccc_cmd *cmd)
@@ -24,11 +35,17 @@ static int virt_i2c(struct i2c_dev_desc *dev, const struct i2c_msg *xfers, int n
 {
 	return n;
 }
+static int virt_priv(struct i3c_dev_desc *dev, struct i3c_priv_xfer *xfers,
+		     int n)
+{
+	return 0;
+}
 static const struct i3c_master_controller_ops virt_ops = {
 	.bus_init = virt_bus_init,
 	.bus_cleanup = virt_bus_cleanup,
 	.do_daa = virt_daa,
 	.send_ccc_cmd = virt_ccc,
+	.priv_xfers = virt_priv,
 	.i2c_xfers = virt_i2c,
 };
 static int virt_probe(struct platform_device *pdev)

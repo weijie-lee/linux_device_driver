@@ -10,9 +10,15 @@
 
 #define DRV_NAME "virt_icc"
 
+static struct icc_node *virt_node;
+
 static int virt_set(struct icc_node *src, struct icc_node *dst)
 {
 	return 0;
+}
+static struct icc_node *virt_xlate(struct of_phandle_args *spec, void *data)
+{
+	return virt_node;
 }
 static int virt_probe(struct platform_device *pdev)
 {
@@ -25,6 +31,7 @@ static int virt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	prov->set = virt_set;
 	prov->aggregate = icc_std_aggregate;
+	prov->xlate = virt_xlate;
 	prov->dev = &pdev->dev;
 	ret = icc_provider_add(prov);
 	if (ret)
@@ -35,6 +42,7 @@ static int virt_probe(struct platform_device *pdev)
 		return IS_ERR(node) ? PTR_ERR(node) : -ENOMEM;
 	}
 	node->name = "virt_icc";
+	virt_node = node;
 	icc_node_add(node, prov);
 	platform_set_drvdata(pdev, prov);
 	return 0;
@@ -46,6 +54,7 @@ static int virt_remove(struct platform_device *pdev)
 	icc_nodes_remove(prov);
 	icc_provider_del(prov);
 	icc_node_destroy(0x56530001);
+	virt_node = NULL;
 	return 0;
 }
 

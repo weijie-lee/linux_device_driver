@@ -196,7 +196,7 @@ test_summary.txt
 
 ### 测试结果
 
-加载测试只在 `5.15.0-173-generic` 客户机里进行。IIO、ALSA、HID、MTD、UIO、FPGA、1-Wire、CAN、mux、GNSS、NFC、Bluetooth、V4L2、counter、I3C、SPMI、DRM 在该内核上是模块，`build_rootfs.sh` 会按 `modinfo` 依赖把它们放进 `preload/`。默认等待时间是 420 秒。
+加载测试只在 `5.15.0-173-generic` 客户机里进行。2026-10-20 的一次运行是 **70 项通过、0 项失败**，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。IIO、ALSA、HID、MTD、UIO、FPGA、1-Wire、CAN、mux、GNSS、NFC、Bluetooth、V4L2、counter、I3C、SPMI、DRM 在该内核上是模块，`build_rootfs.sh` 会按 `modinfo` 依赖把它们放进 `preload/`。默认等待时间是 420 秒。
 
 ### 自定义测试
 

@@ -15,8 +15,17 @@ static int virt_temp(struct thermal_zone_device *tz, int *temp)
 	*temp = 30000;
 	return 0;
 }
-static const struct thermal_zone_device_ops virt_ops = {
+/*
+ * 5.15 thermal_zone_device_register() writes ops->critical when it is NULL.
+ * A const ops object lives in the module's read-only mapping and that write
+ * oopses. Provide the callback so the core leaves the table alone.
+ */
+static void virt_critical(struct thermal_zone_device *tz)
+{
+}
+static struct thermal_zone_device_ops virt_ops = {
 	.get_temp = virt_temp,
+	.critical = virt_critical,
 };
 static int virt_probe(struct platform_device *pdev)
 {

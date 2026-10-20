@@ -205,10 +205,12 @@ grep -E "^\[PASS\]|\[FAIL\]|\[WARN\]|--- Ch" "${LOG_FILE}" 2>/dev/null | \
 echo ""
 
 # 提取汇总数据
-PASS_COUNT=$(grep -c "^\[PASS\]" "${LOG_FILE}" 2>/dev/null || echo "0")
-FAIL_COUNT=$(grep -c "^\[FAIL\]" "${LOG_FILE}" 2>/dev/null || echo "0")
-PASS_COUNT=$(echo "$PASS_COUNT" | tr -d ' \n')
-FAIL_COUNT=$(echo "$FAIL_COUNT" | tr -d ' \n')
+# grep -c exits 1 when the count is 0, but it still prints 0. Do not append
+# another 0 in that case, or a clean run is reported as FAIL=00.
+PASS_COUNT=$(grep -c "^\[PASS\]" "${LOG_FILE}" 2>/dev/null || true)
+FAIL_COUNT=$(grep -c "^\[FAIL\]" "${LOG_FILE}" 2>/dev/null || true)
+PASS_COUNT=$(echo "${PASS_COUNT:-0}" | tr -d ' \n')
+FAIL_COUNT=$(echo "${FAIL_COUNT:-0}" | tr -d ' \n')
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 
 echo -e "${BOLD}  汇总：PASS=${PASS_COUNT}  FAIL=${FAIL_COUNT}  TOTAL=${TOTAL}${NC}"

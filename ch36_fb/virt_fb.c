@@ -25,6 +25,12 @@ static int virt_setpar(struct fb_info *info)
 {
 	return 0;
 }
+/* cfb_imageblit reads pseudo_palette for the console logo. */
+static u32 virt_pseudo_palette[16] = {
+	0x0000, 0xffff, 0xf800, 0x07e0, 0x001f, 0xffe0, 0x07ff, 0xf81f,
+	0xc618, 0xffff, 0xf800, 0x07e0, 0x001f, 0xffe0, 0x07ff, 0xf81f,
+};
+
 static const struct fb_ops virt_ops = {
 	.owner = THIS_MODULE,
 	.fb_check_var = virt_check,
@@ -66,6 +72,7 @@ static int virt_probe(struct platform_device *pdev)
 	info->var.green.length = 6;
 	info->var.blue.offset = 0;
 	info->var.blue.length = 5;
+	info->pseudo_palette = virt_pseudo_palette;
 	ret = register_framebuffer(info);
 	if (ret) {
 		vfree(info->screen_base);
