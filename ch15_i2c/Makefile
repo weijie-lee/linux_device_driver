@@ -1,8 +1,11 @@
+KERNEL_DIR ?= /lib/modules/5.15.0-173-generic/build
 obj-m += i2c_master.o
 obj-m += i2c_slave.o
 
 all:
-	make -C /lib/modules/5.15.0-173-generic/build M=$(PWD) modules
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
 
 clean:
-	make -C /lib/modules/5.15.0-173-generic/build M=$(PWD) clean
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
+
+.PHONY: all clean

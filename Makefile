@@ -21,9 +21,59 @@ CHAPTERS := \
 	ch13_net_virtual \
 	ch14_net_mac_phy \
 	ch15_i2c \
+	ch16_spi \
 	ch17_block \
-	ch18_mmc
-# ch16_spi disabled - needs SPI API fixes for Linux 6.8
+	ch18_mmc \
+	ch19_pci_bus \
+	ch20_usb_bus \
+	ch21_gpio \
+	ch22_pinctrl \
+	ch23_clk \
+	ch24_regulator \
+	ch25_reset \
+	ch26_nvmem \
+	ch27_hwmon \
+	ch28_leds \
+	ch29_thermal \
+	ch30_power \
+	ch31_backlight \
+	ch32_phy \
+	ch33_pps \
+	ch34_ptp \
+	ch35_tty \
+	ch36_fb \
+	ch37_mfd \
+	ch38_extcon \
+	ch39_scsi \
+	ch40_crypto \
+	ch41_virtio \
+	ch42_remoteproc \
+	ch43_devfreq \
+	ch44_dmaengine \
+	ch45_rfkill \
+	ch46_hwspinlock \
+	ch47_mailbox \
+	ch48_powercap \
+	ch49_opp \
+	ch50_mdio \
+	ch51_iio \
+	ch52_alsa \
+	ch53_hid \
+	ch54_mtd \
+	ch55_uio \
+	ch56_w1 \
+	ch57_can \
+	ch58_mux \
+	ch59_fpga \
+	ch60_spmi \
+	ch61_i3c \
+	ch62_gnss \
+	ch63_nfc \
+	ch64_bluetooth \
+	ch65_v4l2 \
+	ch66_counter \
+	ch67_drm \
+	ch68_interconnect
 
 .PHONY: all clean test help $(CHAPTERS)
 
@@ -31,8 +81,7 @@ all: $(CHAPTERS)
 
 $(CHAPTERS):
 	@echo ">>> Building $@ ..."
-	@$(MAKE) -C $@ KERNEL_DIR=$(KERNEL_DIR) 2>/dev/null || \
-		$(MAKE) -C $(KERNEL_DIR) M=$(PWD)/$@ modules
+	+$(MAKE) -C $(KERNEL_DIR) M=$(abspath $(CURDIR)/$@) modules
 
 clean:
 	@for dir in $(CHAPTERS); do \

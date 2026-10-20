@@ -306,7 +306,7 @@ static int __init virt_mac_init(void)
 	virt_dev->features       |= NETIF_F_LOOPBACK;
 
 	/* Register NAPI before register_netdev */
-	netif_napi_add(virt_dev, &priv->napi, virt_mac_poll);
+	netif_napi_add(virt_dev, &priv->napi, virt_mac_poll, NAPI_POLL_WEIGHT);
 
 	ret = register_netdev(virt_dev);
 	if (ret) {

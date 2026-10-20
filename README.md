@@ -1,23 +1,21 @@
 # Linux Device Driver Development Guide
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/weijie-lee/linux_device_driver)
-[![Tests](https://img.shields.io/badge/tests-22%2F22%20passing-brightgreen)](qemu_test/)
 [![License](https://img.shields.io/badge/license-GPL%202.0-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-5.15.0%2B-orange)](https://www.kernel.org/)
+[![Kernel](https://img.shields.io/badge/kernel-5.15.0--173-orange)](https://www.kernel.org/)
 
-一个**系统化、实践化**的 Linux 驱动开发学习项目，涵盖从内核基础到高级驱动子系统的完整知识体系。本项目包含 **20 个循序渐进的章节**，每章从基础到高阶逐步深入，配合 **QEMU 虚拟机模拟环境**，确保所有驱动代码都能在真实内核中运行和测试。
+一个面向内核 **5.15** 的 Linux 驱动教学仓库。顶层 `make all` 编译 **68 个章节**（`ch01`–`ch68`），每章是一个可加载的外置模块，覆盖字符设备、总线、网络、存储，以及 GPIO、时钟、电源、IIO、ALSA、DRM 等子系统。加载验证使用 `qemu_test/`，客户机内核是 `5.15.0-173-generic`。
+
+每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里写明为什么不做成外置模块（架构专属、会替换客户机正在使用的驱动、启动早期，或头文件不可链接）。本仓库不拷贝内核 `drivers/` 树。
 
 ## 项目特色
 
-**系统化的知识体系**：按照 Linux 驱动子系统的实际组织方式编排，涵盖总线子系统（PCI、USB、I2C、SPI）、存储子系统（块设备、MMC）、网络子系统、输入子系统等，帮助开发者理解驱动框架的全景。
+**按子系统编排**：章节目录名与内核子系统对应。`ch01`–`ch20` 是字符设备、平台设备、输入、regmap、看门狗、RTC、PWM、DMA、网络、I2C、SPI、块设备、MMC、PCI 和 USB。`ch21`–`ch68` 补齐其余可以安全做成外置模块的子系统。
 
-**从基础到高阶的递进设计**：每个章节都包含基础、中阶、高阶三个层次的内容。初学者可以从基础开始，逐步掌握驱动开发的核心概念；中级开发者可以直接跳转到高阶内容，学习优化技巧和最佳实践。
+**对齐 5.15 API**：示例按 Ubuntu `5.15.0-173-generic` 的头文件编写（例如 `class_create` 的两个参数、`pwm_ops.get_state` 返回 `void`、I2C/SPI 的 probe/remove 签名）。宿主机内核更新时，这些 `.ko` 的 vermagic 对不上，不能直接 `insmod`，要用下面的 QEMU 客户机。
 
-**完整的 QEMU 测试基础设施**：提供自动化的 rootfs 构建、QEMU 启动和测试脚本，所有 22 个驱动模块都在 QEMU 虚拟机中验证通过（PASS: 22/22），确保代码的正确性和可移植性。
+**QEMU 加载测试**：`qemu_test/build_rootfs.sh` 把各章 `.ko` 打进 initramfs，并预加载 IIO、ALSA、HID、MTD 等 `=m` 的子系统模块。`qemu_test/init.sh` 在客户机里逐个 `insmod` / `rmmod`。
 
-**生产级代码质量**：所有代码都经过 Copilot AI 代码审查，编译时无任何警告，错误处理完善，符合 Linux 内核编码规范。
-
-**详细的文档和注释**：每个驱动都包含详细的功能说明、编译指南、测试方法和常见问题解答，适合自学和教学。
+**每章自带说明**：章节目录里有驱动源码、Makefile、`README.md`，以及架构和流程图说明。
 
 ## 快速开始
 
@@ -26,11 +24,11 @@
 在开始之前，请确保系统满足以下要求：
 
 ```bash
-# Ubuntu 22.04 LTS 或更高版本
-# 安装必要的依赖
+# 教学模块按 5.15.0-173-generic 编译，不要求宿主机正在运行这个内核
 sudo apt-get install -y \
     build-essential \
-    linux-headers-$(uname -r) \
+    linux-headers-5.15.0-173-generic \
+    linux-modules-extra-5.15.0-173-generic \
     qemu-system-x86 \
     busybox-static \
     cpio gzip
@@ -43,7 +41,7 @@ sudo apt-get install -y \
 ```bash
 cd ch01_kernel_basics
 make
-# 生成 kfifo.ko
+# 生成 kfifo_demo_static.ko
 ```
 
 ### 运行 QEMU 全量测试
@@ -79,38 +77,35 @@ bash qemu_test/run_qemu.sh --interactive
 
 ```
 linux_device_driver/
-├── ch01_kernel_basics/        # Ch01: 内核基础（kfifo、动态加载）
-├── ch02_char_device/          # Ch02: 字符设备基础（globalmem）
-├── ch03_char_device_advanced/ # Ch03: 字符设备高阶（globalfifo、FIFO）
-├── ch04_timer/                # Ch04: 内核定时器（second 驱动）
-├── ch05_misc_device/          # Ch05: misc 设备框架
-├── ch06_platform_driver/      # Ch06: 平台驱动框架
-├── ch07_pci_bus/              # Ch07: PCI 总线驱动（基础 + 高阶）
-├── ch08_usb_bus/              # Ch08: USB 总线驱动（基础 + 高阶）
-├── ch09_input_subsystem/      # Ch09: 输入子系统
-├── ch10_regmap_framework/     # Ch10: regmap 寄存器映射框架
-├── ch11_watchdog/             # Ch11: 看门狗设备
-├── ch12_rtc/                  # Ch12: 实时时钟（RTC）
-├── ch13_pwm/                  # Ch13: PWM 控制器
-├── ch14_dma/                  # Ch14: DMA 内存管理
-├── ch15_net_virtual/          # Ch15: 虚拟网络接口（snull）
-├── ch16_net_mac_phy/          # Ch16: 以太网 MAC/PHY 驱动
-├── ch17_i2c/                  # Ch17: I2C 总线驱动
-├── ch18_spi/                  # Ch18: SPI 总线驱动
-├── ch19_block_device/         # Ch19: 虚拟块设备（vmem_disk）
-├── ch20_mmc/                  # Ch20: MMC/eMMC 卡驱动
-├── qemu_test/                 # QEMU 测试基础设施
-│   ├── build_rootfs.sh        # 构建 rootfs 脚本
-│   ├── run_qemu.sh            # 启动 QEMU 脚本
-│   ├── qemu_test_all.sh       # 一键测试入口
-│   ├── init.sh                # QEMU 内 init 脚本
-│   ├── README.md              # QEMU 测试说明
-│   └── output/                # 构建产物目录
-├── TEST_RESULTS.md            # QEMU 测试结果报告
-├── REORGANIZATION_PLAN.md     # 项目重新编排计划
-├── COPILOT_REVIEW_FIXES.md    # Copilot AI Code Review 修复总结
-└── README.md                  # 本文件
+├── ch00_framework/            # 驱动框架总览（文档，不编译）
+├── ch01_kernel_basics/        # kfifo
+├── ch02_char_basic/           # globalmem
+├── ch03_char_advanced/        # globalfifo
+├── ch04_timer/                # 内核定时器
+├── ch05_misc/                 # misc 设备
+├── ch06_platform/             # platform 驱动
+├── ch07_input/                # 输入子系统
+├── ch08_regmap/               # regmap
+├── ch09_watchdog/             # 看门狗
+├── ch10_rtc/                  # RTC
+├── ch11_pwm/                  # PWM
+├── ch12_dma/                  # DMA 内存
+├── ch13_net_virtual/          # snull
+├── ch14_net_mac_phy/          # 以太网 MAC
+├── ch15_i2c/                  # I2C
+├── ch16_spi/                  # SPI
+├── ch17_block/                # 虚拟块设备
+├── ch18_mmc/                  # MMC
+├── ch19_pci_bus/              # PCI
+├── ch20_usb_bus/              # USB
+├── ch21_gpio/ … ch68_interconnect/  # 其余子系统，见下表
+├── qemu_test/                 # rootfs、QEMU、init
+├── LINUX_DRIVER_COVERAGE.md   # drivers/ 目录对照
+├── TEST_RESULTS.md            # 最近一次 QEMU 结果
+└── README.md
 ```
+
+不参与 `make all` 的目录：`ch04_regmap_framework`（见 `ch08_regmap`）、`ch05_i2c_bus`（见 `ch15_i2c`）、`ch07_pci_bus` 与 `ch08_usb_bus`（与 `ch19` / `ch20` 同名模块，避免重复编译）。
 
 ## 完整章节导航
 
@@ -127,46 +122,61 @@ linux_device_driver/
 | **Ch05** | misc 设备 | misc 框架、简化设备注册、自动设备节点 | ⭐ |
 | **Ch06** | 平台驱动 | platform 框架、设备树绑定、资源管理 | ⭐⭐ |
 
-### 第二部分：总线子系统（Ch07-Ch10）
+### 第二部分：设备类与总线（Ch07-Ch20）
 
-这部分深入讲解 Linux 中最重要的几个总线子系统，包括 PCI、USB、I2C 和 SPI。
-
-| 章节 | 标题 | 内容 | 难度 |
+| 章节 | 目录 | 模块 | 内容 |
 |------|------|------|------|
-| **Ch07** | PCI 总线 | 设备枚举、BAR 映射、中断处理、DMA 传输 | ⭐⭐⭐ |
-| **Ch08** | USB 总线 | 设备枚举、URB 管理、异步传输、电源管理 | ⭐⭐⭐ |
-| **Ch09** | I2C 总线 | 主从驱动、时序控制、多主机支持 | ⭐⭐ |
-| **Ch10** | SPI 总线 | 同步传输、DMA 支持、高速通信 | ⭐⭐ |
+| **Ch07** | `ch07_input` | `input_demo` | 输入事件 |
+| **Ch08** | `ch08_regmap` | `regmap_demo` | 寄存器映射 |
+| **Ch09** | `ch09_watchdog` | `watchdog_demo` | 看门狗 |
+| **Ch10** | `ch10_rtc` | `rtc_demo` | 实时时钟 |
+| **Ch11** | `ch11_pwm` | `pwm_demo` | PWM |
+| **Ch12** | `ch12_dma` | `dma_demo` | DMA 一致性内存 |
+| **Ch13** | `ch13_net_virtual` | `snull` | 虚拟网卡 |
+| **Ch14** | `ch14_net_mac_phy` | `eth_mac` | 以太网 MAC 与 NAPI |
+| **Ch15** | `ch15_i2c` | `i2c_master`, `i2c_slave` | I2C 控制器与从设备 |
+| **Ch16** | `ch16_spi` | `spi_master`, `spi_slave` | SPI 控制器与从设备 |
+| **Ch17** | `ch17_block` | `vmem_disk` | 虚拟块设备 |
+| **Ch18** | `ch18_mmc` | `mmc_virt` | MMC 宿主 |
+| **Ch19** | `ch19_pci_bus` | `pci_basic`, `pci_advanced` | PCI |
+| **Ch20** | `ch20_usb_bus` | `usb_basic`, `usb_advanced` | USB |
 
-### 第三部分：设备驱动（Ch11-Ch16）
+### 第三部分：其余子系统（Ch21-Ch68）
 
-这部分介绍各种常见的设备驱动，包括输入设备、网络设备、存储设备等。
+每章注册一个虚拟设备或子系统对象，模块名与目录对应。完整的内核目录对照见 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md)。
 
-| 章节 | 标题 | 内容 | 难度 |
-|------|------|------|------|
-| **Ch11** | 输入子系统 | 键盘、鼠标、触摸屏、事件上报 | ⭐⭐ |
-| **Ch12** | regmap 框架 | 寄存器映射、多种总线支持、缓存机制 | ⭐⭐ |
-| **Ch13** | 看门狗 | 喂狗机制、超时处理、系统恢复 | ⭐ |
-| **Ch14** | RTC 驱动 | 时间管理、闹钟、休眠唤醒 | ⭐⭐ |
-| **Ch15** | PWM 控制 | 脉宽调制、频率调节、占空比控制 | ⭐⭐ |
-| **Ch16** | 网络驱动 | MAC/PHY 驱动、以太网通信、NAPI 优化 | ⭐⭐⭐ |
-
-### 第四部分：存储和高级主题（Ch17-Ch20）
-
-这部分介绍块设备驱动、MMC 驱动等存储相关的高级主题。
-
-| 章节 | 标题 | 内容 | 难度 |
-|------|------|------|------|
-| **Ch17** | DMA 框架 | DMA 缓冲区、一致性映射、IOMMU 支持 | ⭐⭐⭐ |
-| **Ch18** | 虚拟网络 | snull 驱动、虚拟接口、网络栈集成 | ⭐⭐ |
-| **Ch19** | 块设备 | 虚拟磁盘、分区表、文件系统支持 | ⭐⭐⭐ |
-| **Ch20** | MMC 驱动 | SD 卡枚举、高速模式、电源管理 | ⭐⭐⭐ |
+| 章节 | 子系统 | 模块 | 章节 | 子系统 | 模块 |
+|------|--------|------|------|--------|------|
+| Ch21 | GPIO | `virt_gpio` | Ch45 | rfkill | `virt_rfkill` |
+| Ch22 | pinctrl | `virt_pinctrl` | Ch46 | hwspinlock | `virt_hwspin` |
+| Ch23 | clk | `virt_clk` | Ch47 | mailbox | `virt_mbox` |
+| Ch24 | regulator | `virt_regulator` | Ch48 | powercap | `virt_powercap` |
+| Ch25 | reset | `virt_reset` | Ch49 | OPP | `virt_opp` |
+| Ch26 | nvmem | `virt_nvmem` | Ch50 | MDIO | `virt_mdio` |
+| Ch27 | hwmon | `virt_hwmon` | Ch51 | IIO | `virt_iio` |
+| Ch28 | LED | `virt_led` | Ch52 | ALSA | `virt_alsa` |
+| Ch29 | thermal | `virt_thermal` | Ch53 | HID | `virt_hid` |
+| Ch30 | power supply | `virt_psy` | Ch54 | MTD | `virt_mtd` |
+| Ch31 | backlight | `virt_backlight` | Ch55 | UIO | `virt_uio` |
+| Ch32 | PHY | `virt_phy` | Ch56 | 1-Wire | `virt_w1` |
+| Ch33 | PPS | `virt_pps` | Ch57 | CAN | `virt_can` |
+| Ch34 | PTP | `virt_ptp` | Ch58 | mux | `virt_mux` |
+| Ch35 | TTY | `virt_tty` | Ch59 | FPGA | `virt_fpga` |
+| Ch36 | fbdev | `virt_fb` | Ch60 | SPMI | `virt_spmi` |
+| Ch37 | MFD | `virt_mfd` | Ch61 | I3C | `virt_i3c` |
+| Ch38 | extcon | `virt_extcon` | Ch62 | GNSS | `virt_gnss` |
+| Ch39 | SCSI | `virt_scsi` | Ch63 | NFC | `virt_nfc` |
+| Ch40 | crypto | `virt_crypto` | Ch64 | Bluetooth | `virt_bt` |
+| Ch41 | virtio | `virt_virtio` | Ch65 | V4L2 | `virt_v4l2` |
+| Ch42 | remoteproc | `virt_rproc` | Ch66 | counter | `virt_counter` |
+| Ch43 | devfreq | `virt_devfreq` | Ch67 | DRM | `virt_drm` |
+| Ch44 | dmaengine | `virt_dmaeng` | Ch68 | interconnect | `virt_icc` |
 
 ## QEMU 测试基础设施
 
 ### 概述
 
-项目提供了完整的 QEMU 测试基础设施，包括自动化的 rootfs 构建、驱动加载、测试执行和结果收集。所有 22 个驱动模块都在 QEMU 虚拟机中验证通过。
+`qemu_test/` 在 `5.15.0-173-generic` 客户机里加载各章模块。结果以最近一次运行为准，写在 [TEST_RESULTS.md](TEST_RESULTS.md) 和 `qemu_test/output/test_summary.txt`。
 
 ### 工作流程
 
@@ -186,9 +196,7 @@ test_summary.txt
 
 ### 测试结果
 
-当前测试结果：**PASS: 22/22，FAIL: 0**
-
-所有驱动模块都在 QEMU x86_64 虚拟机（内核 5.15.0-173-generic）中成功加载和测试。详细的测试结果请参考 [TEST_RESULTS.md](TEST_RESULTS.md)。
+加载测试只在 `5.15.0-173-generic` 客户机里进行。IIO、ALSA、HID、MTD、UIO、FPGA、1-Wire、CAN、mux、GNSS、NFC、Bluetooth、V4L2、counter、I3C、SPMI、DRM 在该内核上是模块，`build_rootfs.sh` 会按 `modinfo` 依赖把它们放进 `preload/`。默认等待时间是 420 秒。
 
 ### 自定义测试
 
@@ -207,28 +215,20 @@ make KERNEL_DIR=/lib/modules/$(uname -r)/build
 
 ### 编译所有驱动
 
+在仓库根目录执行。顶层 Makefile 用绝对路径调用 kbuild，避免子目录 Makefile 在 `make -C` 下看错 `M=`。
+
 ```bash
-# 在项目根目录运行
-for dir in ch*/; do
-    cd "$dir"
-    make
-    cd ..
-done
+make KERNEL_DIR=/lib/modules/5.15.0-173-generic/build all
 ```
 
-### 在真实系统中加载驱动
+### 在 5.15 内核上加载驱动
+
+`.ko` 的 vermagic 是 `5.15.0-173-generic`。在这版内核上（或在本仓库的 QEMU 客户机里）：
 
 ```bash
-# 加载驱动
-sudo insmod ch01_kernel_basics/kfifo.ko
-
-# 查看驱动加载情况
+sudo insmod ch01_kernel_basics/kfifo_demo_static.ko
 lsmod | grep kfifo
-
-# 卸载驱动
-sudo rmmod kfifo
-
-# 查看驱动日志
+sudo rmmod kfifo_demo_static
 dmesg | tail -20
 ```
 
@@ -236,11 +236,7 @@ dmesg | tail -20
 
 ### 编译检查
 
-所有驱动代码都经过以下检查：
-
-- ✅ **编译无警告**：使用 `-Wall -Wextra` 编译，确保代码质量
-- ✅ **代码审查**：经过 Copilot AI 代码审查，修复了 22 条 code review comments
-- ✅ **运行时测试**：在 QEMU 虚拟机中完整测试，确保功能正确性
+驱动按 5.15 头文件编译，并在 QEMU 客户机里做加载和卸载。内核构建使用的编译器版本可能和宿主机 gcc 不同，kbuild 会提示这一差异，它不表示模块 API 用错。
 
 ### 编码规范
 
@@ -267,29 +263,21 @@ dmesg | tail -20
    - 理解平台驱动框架
    - 了解设备树的基本概念
 
-3. **第 5-8 周**：Ch07-Ch10（总线子系统）
-   - 深入理解 PCI 和 USB 总线
-   - 掌握 I2C 和 SPI 的驱动开发
-   - 学习中断处理和 DMA 传输
+3. **接下来**：Ch07-Ch20（输入、regmap、网络、I2C、SPI、块设备、PCI、USB）
+   - 先看 `ch15_i2c` 和 `ch16_spi` 的控制器/从设备配对
+   - 再看 `ch19_pci_bus` 与 `ch20_usb_bus`
+   - 网络从 `ch13_net_virtual` 到 `ch14_net_mac_phy`
 
 ### 中级开发者路径
 
-如果您已经有一定的驱动开发经验，可以选择性地学习：
+按子系统直接进入对应章节即可，目录名就是子系统名：
 
-1. **PCI 和 USB 驱动**：Ch07-Ch08
-   - 学习高级的中断处理
-   - 掌握 DMA 传输优化
-   - 理解电源管理机制
+1. **总线**：`ch15_i2c`、`ch16_spi`、`ch19_pci_bus`、`ch20_usb_bus`，以及 `ch50_mdio`、`ch60_spmi`、`ch61_i3c`
+2. **网络**：`ch13_net_virtual`、`ch14_net_mac_phy`、`ch32_phy`、`ch45_rfkill`、`ch57_can`
+3. **存储**：`ch17_block`、`ch18_mmc`、`ch39_scsi`、`ch54_mtd`
+4. **SoC 资源**：`ch21_gpio` 到 `ch31_backlight`，加上 `ch43_devfreq` 与 `ch49_opp`
 
-2. **网络驱动**：Ch16-Ch18
-   - 深入理解网络驱动框架
-   - 学习 NAPI 优化技巧
-   - 掌握虚拟网络接口的实现
-
-3. **存储驱动**：Ch19-Ch20
-   - 学习块设备驱动的实现
-   - 掌握 MMC 驱动的开发
-   - 理解文件系统与驱动的交互
+其余子系统（IIO、ALSA、HID、DRM、virtio 等）从 `ch41` 起按编号查阅。哪些内核目录故意没有示例，见 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md)。
 
 ## 常见问题
 
@@ -351,7 +339,6 @@ A: 请参考 [CONTRIBUTING.md](CONTRIBUTING.md) 文件了解贡献指南。
 
 ---
 
-**最后更新**：2026 年 3 月 25 日  
-**项目版本**：1.0.0（第一阶段完成）  
-**内核支持**：5.15.0+  
-**QEMU 版本**：6.2.0+
+**最后更新**：2026 年 10 月 20 日  
+**内核目标**：5.15.0-173-generic  
+**章节**：ch01–ch68 参与 `make all`
