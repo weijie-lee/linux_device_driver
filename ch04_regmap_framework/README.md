@@ -1,3 +1,5 @@
+> 这是早期说明，不在学习路径上，也不参与 `make all`。可运行的 regmap 在 [ch08_regmap](../ch08_regmap)。综合用法在 [learn/04_soc_sensor](../learn/04_soc_sensor)。
+
 # Ch04: Regmap 框架
 
 ## 章节概述

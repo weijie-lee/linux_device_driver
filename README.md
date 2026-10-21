@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-GPL%202.0-blue)](LICENSE)
 [![Kernel](https://img.shields.io/badge/kernel-5.15.0--173-orange)](https://www.kernel.org/)
 
-一个面向内核 **5.15** 的 Linux 驱动教学仓库。顶层 `make all` 编译 **68 个章节**（`ch01`–`ch68`），每章是一个可加载的外置模块，覆盖字符设备、总线、网络、存储，以及 GPIO、时钟、电源、IIO、ALSA、DRM 等子系统。加载验证使用 `qemu_test/`，客户机内核是 `5.15.0-173-generic`。
+一个面向内核 **5.15** 的 Linux 驱动教学仓库。顶层 `make all` 编译 **68 个子系统章节**（`ch01`–`ch68`）和 `learn/` 里的 7 个主线模块。子系统章节覆盖字符设备、总线、网络、存储，以及 GPIO、时钟、电源、IIO、ALSA、DRM。主线把 ioctl、设备树资源、中断、regmap、时钟、电源管理和 DMA 串成可以在 QEMU 里检查的驱动。加载验证使用 `qemu_test/`，客户机内核是 `5.15.0-173-generic`。阅读顺序见 [LEARNING_PATH.md](LEARNING_PATH.md)。
 
 每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里写明为什么不做成外置模块（架构专属、会替换客户机正在使用的驱动、启动早期，或头文件不可链接）。本仓库不拷贝内核 `drivers/` 树。
 
@@ -98,9 +98,11 @@ linux_device_driver/
 ├── ch18_mmc/                  # MMC
 ├── ch19_pci_bus/              # PCI
 ├── ch20_usb_bus/              # USB
-├── ch21_gpio/ … ch68_interconnect/  # 其余子系统，见下表
+├── ch21_gpio/ … ch68_interconnect/  # 子系统索引，见下表
+├── learn/                     # 主线：用户接口、设备树、中断、综合外设、PM、DMA、调试
 ├── qemu_test/                 # rootfs、QEMU、init
 ├── hardcode/                  # 数据结构与设计模式，带可编译短例子
+├── LEARNING_PATH.md           # 建议阅读顺序
 ├── LINUX_DRIVER_COVERAGE.md   # drivers/ 目录对照
 ├── TEST_RESULTS.md            # 最近一次 QEMU 结果
 └── README.md
@@ -141,6 +143,20 @@ linux_device_driver/
 | **Ch18** | `ch18_mmc` | `mmc_virt` | MMC 宿主 |
 | **Ch19** | `ch19_pci_bus` | `pci_basic`, `pci_advanced` | PCI |
 | **Ch20** | `ch20_usb_bus` | `usb_basic`, `usb_advanced` | USB |
+
+### 主线（learn/）
+
+做完 Ch01–Ch06 和 [hardcode/](hardcode/README.md) 之后读这里。`ch21`–`ch68` 是子系统索引，不是第 21 课。细节和本客户机的限制（没有 `CONFIG_OF`、没有 lockdep）写在 [LEARNING_PATH.md](LEARNING_PATH.md)。
+
+| 目录 | 模块 | 内容 |
+|------|------|------|
+| `learn/01_uapi` | `virt_uapi` | read/write、ioctl、poll、mmap、sysfs、debugfs |
+| `learn/02_devicetree` | `virt_dt` | 与 `virt-reg.dts` 对应的 platform 资源 |
+| `learn/03_irq` | `virt_irq` | 硬中断、threaded irq、workqueue |
+| `learn/04_soc_sensor` | `virt_sensor` | regmap、时钟、中断同一次 probe |
+| `learn/05_pm` | `virt_pm` | runtime PM 和 suspend/resume |
+| `learn/06_dma` | `virt_dma` | 一致性内存和流式 DMA |
+| `learn/07_debug` | `virt_debug` | dyndbg 和 ftrace |
 
 ### 第三部分：其余子系统（Ch21-Ch68）
 
@@ -197,7 +213,7 @@ test_summary.txt
 
 ### 测试结果
 
-加载测试只在 `5.15.0-173-generic` 客户机里进行。2026-10-20 的一次运行是 **70 项通过、0 项失败**，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。IIO、ALSA、HID、MTD、UIO、FPGA、1-Wire、CAN、mux、GNSS、NFC、Bluetooth、V4L2、counter、I3C、SPMI、DRM 在该内核上是模块，`build_rootfs.sh` 会按 `modinfo` 依赖把它们放进 `preload/`。默认等待时间是 420 秒。
+加载测试只在 `5.15.0-173-generic` 客户机里进行。最近一次运行记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。IIO、ALSA、HID、MTD、UIO、FPGA、1-Wire、CAN、mux、GNSS、NFC、Bluetooth、V4L2、counter、I3C、SPMI、DRM 在该内核上是模块，`build_rootfs.sh` 会按 `modinfo` 依赖把它们放进 `preload/`。`learn/01_uapi` 的用户态程序静态链接进 initramfs。默认等待时间是 600 秒。
 
 ### 自定义测试
 
@@ -250,35 +266,7 @@ dmesg | tail -20
 
 ## 学习路径
 
-### 初学者路径
-
-如果您是 Linux 驱动开发的初学者，建议按以下顺序学习：
-
-1. **第 1-2 周**：Ch01-Ch03（内核基础和字符设备）
-   - 理解模块加载机制
-   - 掌握字符设备的基本操作
-   - 学习等待队列和异步通知
-
-2. **第 3-4 周**：Ch04-Ch06（定时器、misc 设备、平台驱动）
-   - 学习内核定时器的使用
-   - 理解平台驱动框架
-   - 了解设备树的基本概念
-
-3. **接下来**：Ch07-Ch20（输入、regmap、网络、I2C、SPI、块设备、PCI、USB）
-   - 先看 `ch15_i2c` 和 `ch16_spi` 的控制器/从设备配对
-   - 再看 `ch19_pci_bus` 与 `ch20_usb_bus`
-   - 网络从 `ch13_net_virtual` 到 `ch14_net_mac_phy`
-
-### 中级开发者路径
-
-按子系统直接进入对应章节即可，目录名就是子系统名：
-
-1. **总线**：`ch15_i2c`、`ch16_spi`、`ch19_pci_bus`、`ch20_usb_bus`，以及 `ch50_mdio`、`ch60_spmi`、`ch61_i3c`
-2. **网络**：`ch13_net_virtual`、`ch14_net_mac_phy`、`ch32_phy`、`ch45_rfkill`、`ch57_can`
-3. **存储**：`ch17_block`、`ch18_mmc`、`ch39_scsi`、`ch54_mtd`
-4. **SoC 资源**：`ch21_gpio` 到 `ch31_backlight`，加上 `ch43_devfreq` 与 `ch49_opp`
-
-其余子系统（IIO、ALSA、HID、DRM、virtio 等）从 `ch41` 起按编号查阅。哪些内核目录故意没有示例，见 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md)。
+顺序写在 [LEARNING_PATH.md](LEARNING_PATH.md)：`ch00` → `ch01`–`ch06` → `hardcode/` → `learn/01`–`learn/07` → `ch07`–`ch20`。`ch21`–`ch68` 按子系统查阅。`ch04_regmap_framework`、`ch05_i2c_bus`、`ch07_pci_bus`、`ch08_usb_bus` 不在这条路径上，也不参与 `make all`。
 
 ## 常见问题
 
@@ -340,6 +328,6 @@ A: 请参考 [CONTRIBUTING.md](CONTRIBUTING.md) 文件了解贡献指南。
 
 ---
 
-**最后更新**：2026 年 10 月 20 日  
+**最后更新**：2026 年 10 月 21 日  
 **内核目标**：5.15.0-173-generic  
-**章节**：ch01–ch68 参与 `make all`
+**章节**：ch01–ch68 与 learn/ 参与 `make all`

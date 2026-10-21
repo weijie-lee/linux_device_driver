@@ -17,6 +17,9 @@ mount -t sysfs    none /sys
 mount -t devtmpfs none /dev 2>/dev/null || true
 mkdir -p /dev/pts
 mount -t devpts   none /dev/pts 2>/dev/null || true
+mkdir -p /sys/kernel/debug /sys/kernel/tracing
+mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
+mount -t tracefs none /sys/kernel/tracing 2>/dev/null || true
 
 # ── 全局变量 ──────────────────────────────────────────────────────────────────
 MODDIR=/lib/modules/driver_test
@@ -397,6 +400,181 @@ test_one "ch65_v4l2"         "ch65_v4l2_virt_v4l2.ko"          virt_v4l2
 test_one "ch66_counter"      "ch66_counter_virt_counter.ko"    virt_counter
 test_one "ch67_drm"          "ch67_drm_virt_drm.ko"            virt_drm
 test_one "ch68_interconnect" "ch68_interconnect_virt_icc.ko"   virt_icc
+
+# ── 主线 learn/：检查接口，不只是 insmod ─────────────────────────────────────
+echo "--- learn/01 uapi ---"
+safe_insmod "$MODDIR/learn_01_uapi_virt_uapi.ko"
+if [ $? -eq 0 ]; then
+    sleep 1
+    if /bin/uapi_test; then
+        pass "learn01_uapi"
+    else
+        fail "learn01_uapi" "uapi_test"
+    fi
+    safe_rmmod virt_uapi
+else
+    fail "learn01_uapi" "$(cat /tmp/insmod_err)"
+fi
+
+echo "--- learn/02 devicetree ---"
+safe_insmod "$MODDIR/learn_02_devicetree_virt_dt.ko"
+if [ $? -eq 0 ]; then
+    thr=$(cat /sys/devices/platform/virt_dt/threshold 2>/dev/null)
+    id=$(cat /sys/devices/platform/virt_dt/id 2>/dev/null)
+    irq=$(cat /sys/devices/platform/virt_dt/irq 2>/dev/null)
+    if [ "$thr" = "40" ] && [ "$id" = "4c444454" ] && [ "$irq" = "19" ]; then
+        pass "learn02_devicetree"
+    else
+        fail "learn02_devicetree" "thr=$thr id=$id irq=$irq"
+    fi
+    safe_rmmod virt_dt
+else
+    fail "learn02_devicetree" "$(cat /tmp/insmod_err)"
+fi
+
+echo "--- learn/03 irq ---"
+safe_insmod "$MODDIR/learn_03_irq_virt_irq.ko"
+if [ $? -eq 0 ]; then
+    echo 1 > /sys/devices/platform/virt_irq/kick 2>/dev/null
+    i=0
+    irq_ok=0
+    while [ "$i" -lt 5 ]; do
+        set -- $(cat /sys/devices/platform/virt_irq/counts 2>/dev/null)
+        if [ "$1" -ge 1 ] 2>/dev/null && [ "$2" -ge 1 ] && [ "$3" -ge 1 ] && \
+           [ "$4" -ge 1 ] && [ "$5" -ge 1 ] && [ "$6" -eq 0 ]; then
+            irq_ok=1
+            break
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+    if [ "$irq_ok" -eq 1 ]; then
+        pass "learn03_irq"
+    else
+        fail "learn03_irq" "$(cat /sys/devices/platform/virt_irq/counts 2>/dev/null)"
+    fi
+    safe_rmmod virt_irq
+else
+    fail "learn03_irq" "$(cat /tmp/insmod_err)"
+fi
+
+echo "--- learn/04 sensor ---"
+safe_insmod "$MODDIR/learn_04_soc_sensor_virt_sensor.ko"
+if [ $? -eq 0 ]; then
+    echo 37 > /sys/devices/platform/virt_sensor/temperature 2>/dev/null
+    i=0
+    sensor_ok=0
+    while [ "$i" -lt 5 ]; do
+        temp=$(cat /sys/devices/platform/virt_sensor/temperature 2>/dev/null)
+        hz=$(cat /sys/devices/platform/virt_sensor/clock_hz 2>/dev/null)
+        ic=$(cat /sys/devices/platform/virt_sensor/irq_count 2>/dev/null)
+        lt=$(cat /sys/devices/platform/virt_sensor/last_temp 2>/dev/null)
+        if [ "$temp" = "37" ] && [ "$hz" = "24000000" ] && \
+           [ "$ic" -ge 1 ] 2>/dev/null && [ "$lt" = "37" ]; then
+            sensor_ok=1
+            break
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+    if [ "$sensor_ok" -eq 1 ]; then
+        pass "learn04_sensor"
+    else
+        fail "learn04_sensor" "temp=$temp hz=$hz irq=$ic last=$lt"
+    fi
+    safe_rmmod virt_sensor
+else
+    fail "learn04_sensor" "$(cat /tmp/insmod_err)"
+fi
+
+echo "--- learn/05 pm ---"
+safe_insmod "$MODDIR/learn_05_pm_virt_pm.ko"
+if [ $? -eq 0 ]; then
+    echo suspend > /sys/devices/platform/virt_pm/sleep 2>/dev/null
+    c_sus=$(cat /sys/devices/platform/virt_pm/ctrl 2>/dev/null)
+    s_sus=$(cat /sys/devices/platform/virt_pm/sleeping 2>/dev/null)
+    echo resume > /sys/devices/platform/virt_pm/sleep 2>/dev/null
+    c_res=$(cat /sys/devices/platform/virt_pm/ctrl 2>/dev/null)
+    echo 1 > /sys/devices/platform/virt_pm/idle 2>/tmp/pm_idle_err
+    rt=$(cat /sys/devices/platform/virt_pm/power/runtime_status 2>/dev/null)
+    mk=$(cat /sys/devices/platform/virt_pm/runtime_marker 2>/dev/null)
+    echo on > /sys/devices/platform/virt_pm/power/control 2>/dev/null
+    rt_on=$(cat /sys/devices/platform/virt_pm/power/runtime_status 2>/dev/null)
+    mk_on=$(cat /sys/devices/platform/virt_pm/runtime_marker 2>/dev/null)
+    if [ "$c_sus" = "0" ] && [ "$s_sus" = "1" ] && [ "$c_res" = "3" ] && \
+       [ "$rt" = "suspended" ] && [ "$mk" = "suspended" ] && \
+       [ "$rt_on" = "active" ] && [ "$mk_on" = "active" ]; then
+        pass "learn05_pm"
+    else
+        fail "learn05_pm" "sus=$c_sus/$s_sus res=$c_res rt=$rt/$mk on=$rt_on/$mk_on idle=$(cat /tmp/pm_idle_err 2>/dev/null)"
+    fi
+    safe_rmmod virt_pm
+else
+    fail "learn05_pm" "$(cat /tmp/insmod_err)"
+fi
+
+echo "--- learn/06 dma ---"
+safe_insmod "$MODDIR/learn_06_dma_virt_dma.ko"
+if [ $? -eq 0 ]; then
+    rep=$(cat /sys/devices/platform/virt_dma/report 2>/dev/null)
+    echo "$rep" | grep -q "coherent:ok" && \
+    echo "$rep" | grep -q "stream:ok" && \
+    echo "$rep" | grep -q "sg:ok" && \
+        pass "learn06_dma" || fail "learn06_dma" "$rep"
+    safe_rmmod virt_dma
+else
+    fail "learn06_dma" "$(cat /tmp/insmod_err)"
+fi
+
+echo "--- learn/07 debug ---"
+safe_insmod "$MODDIR/learn_07_debug_virt_debug.ko"
+if [ $? -eq 0 ]; then
+    echo 1 > /sys/devices/platform/virt_debug/trigger
+    if dmesg | grep -q "virt_debug: ping info" && \
+       ! dmesg | grep -q "virt_debug: ping debug"; then
+        echo "module virt_debug +p" > /sys/kernel/debug/dynamic_debug/control 2>/tmp/dyndbg_err
+        echo 1 > /sys/devices/platform/virt_debug/trigger
+        if dmesg | grep -q "virt_debug: ping debug"; then
+            pass "learn07_dyndbg"
+        else
+            fail "learn07_dyndbg" "$(cat /tmp/dyndbg_err 2>/dev/null)"
+        fi
+    else
+        fail "learn07_dyndbg" "info/debug before control"
+    fi
+
+    TR=/sys/kernel/tracing
+    if [ ! -f "$TR/trace" ]; then
+        TR=/sys/kernel/debug/tracing
+    fi
+    if [ -f "$TR/trace" ]; then
+        echo 0 > "$TR/tracing_on"
+        echo nop > "$TR/current_tracer"
+        echo > "$TR/set_ftrace_filter"
+        echo function > "$TR/current_tracer" 2>/tmp/ft_tracer_err
+        echo virt_debug_ping > "$TR/set_ftrace_filter" 2>/tmp/ft_err
+        if [ $? -eq 0 ]; then
+            echo > "$TR/trace"
+            echo 1 > "$TR/tracing_on"
+            echo 1 > /sys/devices/platform/virt_debug/trigger
+            echo 0 > "$TR/tracing_on"
+            if grep -q virt_debug_ping "$TR/trace"; then
+                pass "learn07_ftrace"
+            else
+                fail "learn07_ftrace" "filter=$(cat $TR/set_ftrace_filter 2>/dev/null) $(head -n 4 $TR/trace 2>/dev/null)"
+            fi
+        else
+            fail "learn07_ftrace" "$(cat /tmp/ft_err 2>/dev/null)"
+        fi
+        echo nop > "$TR/current_tracer"
+        echo 1 > "$TR/tracing_on"
+    else
+        fail "learn07_ftrace" "tracefs not mounted"
+    fi
+    safe_rmmod virt_debug
+else
+    fail "learn07_debug" "$(cat /tmp/insmod_err)"
+fi
 
 # ── 汇总 ──────────────────────────────────────────────────────────────────────
 echo ""

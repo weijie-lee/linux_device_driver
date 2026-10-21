@@ -15,7 +15,7 @@
 # 选项：
 #   --output-dir <dir>   initramfs/vmlinuz 所在目录（默认：./qemu_test/output）
 #   --log <file>         QEMU 串口输出日志文件（默认：output/qemu_serial.log）
-#   --timeout <secs>     等待测试完成的超时时间（默认：420 秒）
+#   --timeout <secs>     等待测试完成的超时时间（默认：600 秒）
 #   --interactive        交互模式：不自动等待，直接连接串口（调试用）
 #   --kvm                尝试启用 KVM 加速（需要宿主机支持）
 #   --help               显示帮助信息
@@ -41,7 +41,7 @@ die()   { error "$*"; exit 2; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="${SCRIPT_DIR}/output"
 LOG_FILE=""
-TIMEOUT=420
+TIMEOUT=600
 INTERACTIVE=0
 USE_KVM=0
 

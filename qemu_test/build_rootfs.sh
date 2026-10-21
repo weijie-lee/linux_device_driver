@@ -146,7 +146,7 @@ chmod +x "${ROOTFS_DIR}/bin/busybox"
 # 创建 busybox applet 符号链接
 for applet in sh ash cat echo ls grep insmod rmmod lsmod \
               sleep mount umount mkdir mknod ip dmesg \
-              timeout poweroff reboot; do
+              timeout poweroff reboot head; do
     ln -sf busybox "${ROOTFS_DIR}/bin/${applet}" 2>/dev/null || true
 done
 # sbin 中的命令
@@ -232,6 +232,13 @@ declare -A KO_MAP=(
     ["ch66_counter"]="virt_counter"
     ["ch67_drm"]="virt_drm"
     ["ch68_interconnect"]="virt_icc"
+    ["learn/01_uapi"]="virt_uapi"
+    ["learn/02_devicetree"]="virt_dt"
+    ["learn/03_irq"]="virt_irq"
+    ["learn/04_soc_sensor"]="virt_sensor"
+    ["learn/05_pm"]="virt_pm"
+    ["learn/06_dma"]="virt_dma"
+    ["learn/07_debug"]="virt_debug"
 )
 
 for ch_dir in "${!KO_MAP[@]}"; do
@@ -239,8 +246,8 @@ for ch_dir in "${!KO_MAP[@]}"; do
     for ko_name in ${KO_MAP[$ch_dir]}; do
         ko_file="${src_dir}/${ko_name}.ko"
         if [[ -f "${ko_file}" ]]; then
-            # 目标文件名：ch目录名_模块名.ko（避免重名）
-            dst_name="${ch_dir}_${ko_name}.ko"
+            # 目标文件名：目录名_模块名.ko。learn/01_uapi 里的斜杠换成下划线。
+            dst_name="${ch_dir//\//_}_${ko_name}.ko"
             cp "${ko_file}" "${ROOTFS_DIR}/lib/modules/driver_test/${dst_name}"
             ok "  ✅ ${dst_name}"
             KO_COUNT=$((KO_COUNT + 1))
@@ -300,6 +307,12 @@ for ko in "${PRE_ORDER[@]}"; do
     echo "${base}" >> "${ROOTFS_DIR}/lib/modules/driver_test/preload.list"
 done
 ok "预加载依赖模块: $(wc -l < "${ROOTFS_DIR}/lib/modules/driver_test/preload.list" | tr -d ' ') 个"
+
+info "编译用户态 uapi_test（静态链接，initramfs 里没有动态装载器）..."
+gcc -static -O2 -Wall -o "${ROOTFS_DIR}/bin/uapi_test" \
+    "${REPO_DIR}/learn/01_uapi/uapi_test.c"
+chmod 755 "${ROOTFS_DIR}/bin/uapi_test"
+ok "uapi_test 已放入 rootfs"
 
 # ── Step 5: 生成 init 脚本 ────────────────────────────────────────────────────
 info "Step 5/5: 生成 init 测试脚本..."

@@ -12,11 +12,11 @@
 | QEMU 版本 | qemu-system-x86_64 (QEMU emulator) |
 | 测试内核 | Linux 5.15.0-173-generic |
 | 测试架构 | x86_64 |
-| 测试时间 | 2026-10-20（最近一次）；下表中的 19 项明细来自 2026-03-24 |
+| 测试时间 | 2026-10-21（最近一次）；下表中的 19 项明细来自 2026-03-24 |
 
 ## 测试结果汇总
 
-**2026-10-20：70 项测试，70 项通过，0 项失败。** 客户机内核 `5.15.0-173-generic`，initramfs 由 `qemu_test/build_rootfs.sh` 生成。70 项覆盖 ch01–ch18 的原有检查，以及 ch19–ch68 的 `insmod`/`rmmod`（PCI、USB，以及 GPIO 到 interconnect）。`=m` 的子系统模块由 `preload.list` 预先插入。
+**2026-10-21：78 项测试，78 项通过，0 项失败。** 客户机内核 `5.15.0-173-generic`。70 项仍是 ch01–ch68 的加载检查。另外 8 项来自 `learn/`：`uapi_test`（read/write、ioctl、poll、mmap、sysfs、debugfs）、设备树资源读回（threshold 40、id `4c444454`、irq 19）、中断三阶段计数、传感器的 24 MHz 时钟和温度 37、runtime PM 的 suspended/active，以及 dyndbg 和 ftrace。ftrace 要先切到 function tracer，再写 `set_ftrace_filter`。
 
 下面是 2026-03-24 对当时 19 个模块的明细。ch19–ch68 的通过记录在 `qemu_test/output/test_summary.txt` 的同一次 70 项运行里。
 
