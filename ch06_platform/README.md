@@ -1,3 +1,5 @@
+> 本章在模块里注册 platform 设备，用来看总线和 probe。`reg`、中断号和自定义属性与设备树的对应关系在 [learn/02_devicetree](../learn/02_devicetree)。这台 5.15 x86 客户机没有打开 `CONFIG_OF`。
+
 # Ch06: 平台驱动
 
 ## 章节概述

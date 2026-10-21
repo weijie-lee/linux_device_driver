@@ -1,3 +1,5 @@
+> 本目录的 `dma_demo.c` 只打印 `kmalloc` / `vmalloc` 地址。`dma_alloc_coherent`、`dma_map_single` 和 `dma_map_sg` 的可运行例子在 [learn/06_dma](../learn/06_dma)。
+
 # Ch12: DMA
 
 ## 章节概述
