@@ -74,7 +74,14 @@ CHAPTERS := \
 	ch66_counter \
 	ch67_drm \
 	ch68_interconnect \
-	hardcode
+	hardcode \
+	learn/01_uapi \
+	learn/02_devicetree \
+	learn/03_irq \
+	learn/04_soc_sensor \
+	learn/05_pm \
+	learn/06_dma \
+	learn/07_debug
 
 .PHONY: all clean test help $(CHAPTERS)
 

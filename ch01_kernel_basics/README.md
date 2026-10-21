@@ -203,163 +203,50 @@ static ssize_t fifo_write(struct file *file, const char __user *buf, ...) {
 }
 ```
 
-## 编译方法
+## 在镜像里复现
 
-### 编译单个模块
-
-```bash
-cd ch01_kernel_basics
-
-# 编译所有模块
-make
-
-# 编译特定模块
-make KERNEL_DIR=/lib/modules/$(uname -r)/build
-```
-
-### 编译输出
-
-成功编译后会生成以下 .ko 文件：
-
-- `kfifo_demo_static.ko`：kfifo 演示模块
-
-注意：container_of.c 和 linked_lists.c 是演示代码，当前 Makefile 未配置编译这两个文件。如需编译，可手动添加到 Makefile 中。
-
-## 验证方法
-
-### 方法 1：查看内核日志
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
 
 ```bash
-# 加载模块
-sudo insmod kfifo_demo_static.ko
-
-# 查看内核日志
-dmesg | tail -30
-
-# 卸载模块
-sudo rmmod kfifo_demo_static
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter ch01
 ```
 
-**预期输出**（摘录）：
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
 
 ```
-[PASS] Ch01 kfifo_demo_static
-fifo test begin
-fifo len:5
-fifo len:15
-buf:hello
-fifo len:10
-ret:2
-ret:2
-skip 1st element
-queue len 32
-kfifo peek: 20
-item = 20
-item = 21
-...
-item = 31
-fifo test end
++ insmod /lib/modules/driver_test/ch01_kernel_basics_kfifo_demo_static.ko
+insmod ok
++ dmesg | grep fifo
+[    1.873477] kfifo_demo_static: loading out-of-tree module taints kernel.
+[    1.873653] kfifo_demo_static: module verification failed: signature and/or required key missing - tainting kernel
+[    1.874518] fifo test begin
+[    1.874602] fifo len:5
+[    1.874639] fifo len:15
+[    1.874749] fifo len:10
+[    1.874816] kfifo peek: 3
+[    1.874917] fifo test end
++ dmesg | grep 'buf:'
+[    1.874693] buf:hello
++ echo labfifo > /proc/bytestream-fifo
++ cat /proc/bytestream-fifo
+labfifo
++ rmmod kfifo_demo_static
+rmmod ok
+[PASS] ch01_kfifo
 ```
 
-### 方法 2：通过 /proc 接口测试
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] ch01_kfifo`
+- dmesg 里有 `fifo test begin`、`fifo test end`、`buf:hello`，并且 `cat /proc/bytestream-fifo` 读回 `labfifo`。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 
 ```bash
-# 加载模块
-sudo insmod kfifo_demo_static.ko
-
-# 向 kfifo 写入数据
-echo "Hello from userspace" | sudo tee /proc/bytestream-fifo
-
-# 从 kfifo 读取数据
-sudo cat /proc/bytestream-fifo
-
-# 卸载模块
-sudo rmmod kfifo_demo_static
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter ch01
 ```
-
-### 方法 3：自动化测试
-
-```bash
-cd ch01_kernel_basics/tests
-bash test.sh
-```
-
-该脚本会自动执行以下步骤：
-
-1. 清理旧的模块
-2. 加载 kfifo_demo_static.ko
-3. 检查内核日志中的关键字
-4. 验证模块已加载
-5. 卸载模块
-6. 验证模块已卸载
-
-## QEMU 实验结果
-
-### 测试环境
-
-| 项目 | 配置 |
-|------|------|
-| **QEMU 版本** | 6.2.0 |
-| **内核版本** | 5.15.0-173-generic |
-| **机器类型** | Q35 |
-| **内存** | 512 MB |
-| **CPU** | 2 核 |
-| **rootfs** | busybox 1.30.1 |
-
-### 测试结果
-
-**总体结果**：✅ **PASS**
-
-```
-=== Ch01 Kernel Basics ===
-[PASS] kfifo_demo_static.ko loaded successfully
-[PASS] kfifo_demo_static.ko unloaded successfully
-=== Ch01 Test Summary ===
-PASS: 1
-FAIL: 0
-```
-
-### 详细日志
-
-**模块加载阶段**：
-
-```
-[  12.345678] kfifo_demo_static: loading out-of-tree module taints kernel.
-[  12.345789] kfifo_demo_static: module verification failed: signature and/or required key missing - tainting kernel
-[  12.346123] fifo test begin
-[  12.346234] fifo len:5
-[  12.346345] fifo len:15
-[  12.346456] buf:hello
-[  12.346567] fifo len:10
-[  12.346678] ret:2
-[  12.346789] ret:2
-[  12.346890] skip 1st element
-[  12.347001] queue len 32
-[  12.347112] kfifo peek: 20
-[  12.347223] item = 20
-[  12.347334] item = 21
-[  12.347445] item = 22
-...
-[  12.348901] item = 31
-[  12.349012] fifo test end
-```
-
-**模块卸载阶段**：
-
-```
-[  15.567890] Goodbye from kfifo_demo_static
-```
-
-### 关键验证点
-
-1. ✅ 模块成功加载，无编译警告
-2. ✅ kfifo 初始化成功，FIFO_SIZE = 32
-3. ✅ 入队操作正常：字符串 "hello" 入队，长度为 5
-4. ✅ 出队操作正常：取出 5 个字节得到 "hello"
-5. ✅ 跳过操作正常：kfifo_skip 成功跳过一个元素
-6. ✅ 查看操作正常：kfifo_peek 返回队头元素值 20
-7. ✅ 完整遍历：所有元素（20-31）都成功出队
-8. ✅ 模块卸载成功，无内存泄漏
 
 ## 常见问题
 

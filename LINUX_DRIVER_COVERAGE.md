@@ -2,7 +2,7 @@
 
 本仓库是面向内核 **5.15** 的驱动教学目录，目标是让每个可以安全做成外置模块的驱动子系统都有一章可加载示例。它不会把内核 `drivers/` 树原样拷进来，也不会替换客户机里正在使用的启动期驱动。
 
-对照基准是 Ubuntu `5.15.0-173-generic` 的 `drivers/` 目录（与 `/lib/modules/5.15.0-173-generic/build` 一致）。顶层 `make all` 只编译下表里标了章节的目录。`ch07_pci_bus` 与 `ch08_usb_bus` 是 `ch19_pci_bus`、`ch20_usb_bus` 的同名副本，不参与顶层编译。`ch04_regmap_framework`、`ch05_i2c_bus` 只有说明，实现分别在 `ch08_regmap` 和 `ch15_i2c`。`ch00_framework` 是框架总览，没有模块。
+对照基准是 Ubuntu `5.15.0-173-generic` 的 `drivers/` 目录（与 `/lib/modules/5.15.0-173-generic/build` 一致）。顶层 `make all` 编译下表里标了章节的目录，以及 `learn/` 里的主线模块。`learn/` 不对应新的 `drivers/` 目录，它把 ioctl、设备树资源、中断、regmap、时钟、电源管理和 DMA 放到同一条阅读顺序里，见 [LEARNING_PATH.md](LEARNING_PATH.md)。`ch07_pci_bus` 与 `ch08_usb_bus` 是 `ch19_pci_bus`、`ch20_usb_bus` 的同名副本，不参与顶层编译。`ch04_regmap_framework`、`ch05_i2c_bus` 只有说明，实现分别在 `ch08_regmap` 和 `ch15_i2c`。`ch00_framework` 是框架总览，没有模块。
 
 模块按 5.15 头文件编译。宿主机若是更新的内核，`insmod` 会因 vermagic 拒绝这些 `.ko`。加载验证走 `qemu_test/`，客户机内核是 `5.15.0-173-generic`。标记为 `=m` 的子系统由 `build_rootfs.sh` 把提供者模块放进 initramfs 的 `preload/`，`init.sh` 在加载教学模块之前先插入它们。
 

@@ -1,0 +1,34 @@
+/dts-v1/;
+
+/*
+ * 与 virt_dt.c 里的 platform 资源是同一份描述。
+ * 5.15.0-173-generic 没有 CONFIG_OF，QEMU 不能把这份 dtb 交给客户机。
+ * 用 dtc 检查语法：dtc -I dts -O dtb -o /dev/null virt-reg.dts
+ */
+
+/ {
+	compatible = "ldd,virt-board";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	intc: interrupt-controller {
+		compatible = "ldd,virt-intc";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		virt_reg: virt-reg@10000000 {
+			compatible = "ldd,virt-reg";
+			reg = <0x0 0x10000000 0x0 0x1000>;
+			interrupt-parent = <&intc>;
+			interrupts = <19>;
+			ldd,threshold = <40>;
+		};
+	};
+};

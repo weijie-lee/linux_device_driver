@@ -26,3 +26,7 @@ qemu_test/output/build.log
 
 # Build logs
 *.log
+
+# Userspace test binary and compiled device trees
+learn/01_uapi/uapi_test
+*.dtb
