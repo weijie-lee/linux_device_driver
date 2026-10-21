@@ -73,7 +73,8 @@ CHAPTERS := \
 	ch65_v4l2 \
 	ch66_counter \
 	ch67_drm \
-	ch68_interconnect
+	ch68_interconnect \
+	hardcode
 
 .PHONY: all clean test help $(CHAPTERS)
 
