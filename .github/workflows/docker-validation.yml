@@ -23,4 +23,4 @@ jobs:
         run: docker build -t ldd-lab-ci .
 
       - name: Run full validation in container
-        run: docker run --rm --entrypoint bash ldd-lab-ci qemu_test/qemu_test_all.sh
+        run: docker run --rm --entrypoint bash ldd-lab-ci /linux_device_driver/qemu_test/qemu_test_all.sh
