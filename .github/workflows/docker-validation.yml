@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: docker-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   docker-qemu-test:
     name: Build image and run tests
@@ -22,5 +26,28 @@ jobs:
       - name: Build Docker image
         run: docker build -t ldd-lab-ci .
 
-      - name: Run full validation in container
-        run: docker run --rm ldd-lab-ci test
+      - name: Run the smoke suite in the container
+        run: |
+          mkdir -p ci-out/test
+          docker run --rm -v "$PWD/ci-out/test:/linux_device_driver/qemu_test/output" ldd-lab-ci test
+
+      - name: Run every chapter lab from the READMEs
+        run: |
+          mkdir -p ci-out/chapter
+          docker run --rm -v "$PWD/ci-out/chapter:/linux_device_driver/qemu_test/output" ldd-lab-ci chapter all
+
+      - name: Upload QEMU logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-logs
+          path: |
+            ci-out/**/qemu_serial.log
+            ci-out/**/test_summary.txt
+            ci-out/**/build.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Remove root-owned container output
+        if: always()
+        run: sudo rm -rf ci-out
