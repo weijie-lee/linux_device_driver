@@ -548,20 +548,26 @@ if [ $? -eq 0 ]; then
         TR=/sys/kernel/debug/tracing
     fi
     if [ -f "$TR/trace" ]; then
+        echo 0 > "$TR/tracing_on"
+        echo nop > "$TR/current_tracer"
+        echo > "$TR/set_ftrace_filter"
+        echo function > "$TR/current_tracer" 2>/tmp/ft_tracer_err
         echo virt_debug_ping > "$TR/set_ftrace_filter" 2>/tmp/ft_err
         if [ $? -eq 0 ]; then
-            echo function > "$TR/current_tracer"
             echo > "$TR/trace"
+            echo 1 > "$TR/tracing_on"
             echo 1 > /sys/devices/platform/virt_debug/trigger
+            echo 0 > "$TR/tracing_on"
             if grep -q virt_debug_ping "$TR/trace"; then
                 pass "learn07_ftrace"
             else
-                fail "learn07_ftrace" "symbol missing"
+                fail "learn07_ftrace" "filter=$(cat $TR/set_ftrace_filter 2>/dev/null) $(head -n 4 $TR/trace 2>/dev/null)"
             fi
-            echo nop > "$TR/current_tracer"
         else
-            fail "learn07_ftrace" "$(cat /tmp/ft_err)"
+            fail "learn07_ftrace" "$(cat /tmp/ft_err 2>/dev/null)"
         fi
+        echo nop > "$TR/current_tracer"
+        echo 1 > "$TR/tracing_on"
     else
         fail "learn07_ftrace" "tracefs not mounted"
     fi

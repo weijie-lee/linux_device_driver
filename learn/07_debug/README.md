@@ -14,9 +14,13 @@ echo 'module virt_debug +p' > /sys/kernel/debug/dynamic_debug/control
 echo 1 > /sys/devices/platform/virt_debug/trigger
 dmesg | grep 'ping debug'
 
-echo virt_debug_ping > /sys/kernel/tracing/set_ftrace_filter
+echo 0 > /sys/kernel/tracing/tracing_on
+echo nop > /sys/kernel/tracing/current_tracer
 echo function > /sys/kernel/tracing/current_tracer
+echo virt_debug_ping > /sys/kernel/tracing/set_ftrace_filter
+echo 1 > /sys/kernel/tracing/tracing_on
 echo 1 > /sys/devices/platform/virt_debug/trigger
+echo 0 > /sys/kernel/tracing/tracing_on
 grep virt_debug_ping /sys/kernel/tracing/trace
 echo nop > /sys/kernel/tracing/current_tracer
 ```
