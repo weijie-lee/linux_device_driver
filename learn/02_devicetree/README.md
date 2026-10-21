@@ -36,3 +36,38 @@ cat /sys/devices/platform/virt_dt/irq         # 19
 ```
 
 `ch06_platform` 只演示 platform 总线的注册。资源布局以这一章为准。
+
+## 在镜像里复现
+
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
+
+```bash
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter learn02
+```
+
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+
+```
++ insmod /lib/modules/driver_test/learn_02_devicetree_virt_dt.ko
+insmod ok
++ cat /sys/devices/platform/virt_dt/threshold /sys/devices/platform/virt_dt/id /sys/devices/platform/virt_dt/irq
+40
+4c444454
+19
++ rmmod virt_dt
+rmmod ok
+[PASS] learn02_devicetree
+```
+
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] learn02_devicetree`
+- 三行依次是 `40`、`4c444454`、`19`。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
+
+```bash
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter learn02
+```

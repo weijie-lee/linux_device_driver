@@ -18,6 +18,7 @@
 #   --timeout <secs>     等待测试完成的超时时间（默认：600 秒）
 #   --interactive        交互模式：不自动等待，直接连接串口（调试用）
 #   --kvm                尝试启用 KVM 加速（需要宿主机支持）
+#   --chapter <name>     只跑 lab.sh 里的一章（ch01、ch21、learn01、hardcode、all）
 #   --help               显示帮助信息
 #
 # 退出码：
@@ -44,6 +45,7 @@ LOG_FILE=""
 TIMEOUT=600
 INTERACTIVE=0
 USE_KVM=0
+CHAPTER=""
 
 # ── 解析命令行参数 ────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -53,6 +55,7 @@ while [[ $# -gt 0 ]]; do
         --timeout)     TIMEOUT="$2"; shift 2 ;;
         --interactive) INTERACTIVE=1; shift ;;
         --kvm)         USE_KVM=1; shift ;;
+        --chapter)     CHAPTER="$2"; shift 2 ;;
         --help|-h)
             sed -n '2,35p' "$0" | grep '^#' | sed 's/^# \?//'
             exit 0 ;;
@@ -106,6 +109,9 @@ fi
 
 # 内核命令行参数
 KERNEL_CMDLINE="console=ttyS0 panic=5 quiet loglevel=3"
+if [[ -n "${CHAPTER}" ]]; then
+    KERNEL_CMDLINE="${KERNEL_CMDLINE} ldd_chapter=${CHAPTER}"
+fi
 
 # QEMU 完整命令
 QEMU_CMD=(
@@ -195,6 +201,13 @@ echo -e "${BOLD}============================================================${NC
 if [[ ! -f "${LOG_FILE}" ]] || [[ ! -s "${LOG_FILE}" ]]; then
     error "日志文件为空或不存在: ${LOG_FILE}"
     exit 2
+fi
+
+if [[ -n "${CHAPTER}" ]]; then
+    echo ""
+    echo -e "${BOLD} 客户机回显${NC}"
+    sed -n '/Linux Driver Lab/,/QEMU_TEST_DONE/p' "${LOG_FILE}" || true
+    echo ""
 fi
 
 # 打印所有 [PASS]/[FAIL]/[WARN] 行

@@ -18,3 +18,50 @@ cat /sys/devices/platform/virt_pm/power/runtime_status # active
 ```
 
 `runtime_marker` 由 runtime 回调更新，用来确认走的是驱动自己的函数，而不只是 PM 核心改了状态字。
+
+## 在镜像里复现
+
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
+
+```bash
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter learn05
+```
+
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+
+```
++ insmod /lib/modules/driver_test/learn_05_pm_virt_pm.ko
+insmod ok
++ echo suspend > /sys/devices/platform/virt_pm/sleep
++ cat /sys/devices/platform/virt_pm/ctrl /sys/devices/platform/virt_pm/sleeping
+0
+1
++ echo resume > /sys/devices/platform/virt_pm/sleep
++ cat /sys/devices/platform/virt_pm/ctrl
+3
++ echo 1 > /sys/devices/platform/virt_pm/idle
+sh: write error: Resource temporarily unavailable
++ cat /sys/devices/platform/virt_pm/power/runtime_status /sys/devices/platform/virt_pm/runtime_marker
+suspended
+suspended
++ echo on > /sys/devices/platform/virt_pm/power/control
++ cat /sys/devices/platform/virt_pm/power/runtime_status /sys/devices/platform/virt_pm/runtime_marker
+active
+active
++ rmmod virt_pm
+rmmod ok
+[PASS] learn05_pm
+```
+
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] learn05_pm`
+- suspend 之后 ctrl 是 `0`，resume 之后是 `3`。写 `idle` 时 shell 可能打印 `Resource temporarily unavailable`，随后 `runtime_status` 仍是 `suspended`，`control=on` 之后是 `active`。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
+
+```bash
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter learn05
+```

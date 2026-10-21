@@ -14,6 +14,9 @@ Linux 驱动实验镜像（编译与 QEMU 客户机均为 5.15.0-173-generic）
   docker run --rm ldd-lab test
       编译全部章节并在 QEMU 里跑 init.sh。
 
+  docker run --rm ldd-lab chapter ch21
+      只跑某一章，客户机回显命令和结果。章节名如 ch01、ch21、learn01、hardcode、all。
+
   docker run --rm ldd-lab build
       只编译并打包 initramfs。
 
@@ -46,6 +49,10 @@ case "${cmd}" in
     build)
         shift
         exec bash qemu_test/build_rootfs.sh "$@"
+        ;;
+    chapter)
+        shift
+        exec bash qemu_test/run_chapter.sh "$@"
         ;;
     qemu)
         shift

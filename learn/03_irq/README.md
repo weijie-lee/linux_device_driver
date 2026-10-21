@@ -22,3 +22,37 @@ hard thread work hard_in_interrupt thread_in_task raise_errno
 echo 1 > /sys/devices/platform/virt_irq/kick
 cat /sys/devices/platform/virt_irq/counts
 ```
+
+## 在镜像里复现
+
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
+
+```bash
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter learn03
+```
+
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+
+```
++ insmod /lib/modules/driver_test/learn_03_irq_virt_irq.ko
+insmod ok
++ echo 1 > /sys/devices/platform/virt_irq/kick
++ cat /sys/devices/platform/virt_irq/counts
+1 1 1 1 1 0
++ rmmod virt_irq
+rmmod ok
+[PASS] learn03_irq
+```
+
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] learn03_irq`
+- `counts` 前五项都大于等于 1，第六项 `raise_errno` 是 0。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
+
+```bash
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter learn03
+```

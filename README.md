@@ -56,6 +56,14 @@ docker run --rm -it ldd-lab
 docker run --rm ldd-lab test
 ```
 
+只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`，或 `all`。
+
+```bash
+docker run --rm ldd-lab chapter ch02
+```
+
+每一章 README 的「在镜像里复现」写的就是这条命令、客户机回显，以及怎样算成功。`chapter` 后面的参数会传给 `qemu_test/run_qemu.sh`，例如 `--kvm`。
+
 `test` 后面的参数会传给 `qemu_test/qemu_test_all.sh`，例如 `--timeout 600`。只打包 initramfs 用 `docker run --rm ldd-lab build`。已经打好包、想进客户机串口时：
 
 ```bash

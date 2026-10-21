@@ -4,6 +4,19 @@
 
 ---
 
+## 在镜像里复现
+
+这一章没有 `.ko`。`driver_template.c` 是一份字符设备骨架，不参与 `make all`。镜像里用下面的命令核对骨架还在，并且五步注册都写在文件里。
+
+```bash
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter ch00
+```
+
+实验成功：退出码是 0，回显里有 `[PASS] ch00_framework`，并且能看到 `alloc_chrdev_region`、`cdev_init`、`cdev_add`、`class_create`、`device_create`。
+
+可加载的第一块模块从 [ch01_kernel_basics](../ch01_kernel_basics) 开始。
+
 ## 目录
 
 1. [驱动与内核的关系](#1-驱动与内核的关系)

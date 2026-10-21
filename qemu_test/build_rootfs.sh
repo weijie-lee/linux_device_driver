@@ -146,7 +146,7 @@ chmod +x "${ROOTFS_DIR}/bin/busybox"
 # 创建 busybox applet 符号链接
 for applet in sh ash cat echo ls grep insmod rmmod lsmod \
               sleep mount umount mkdir mknod ip dmesg \
-              timeout poweroff reboot head; do
+              timeout poweroff reboot head find dd od; do
     ln -sf busybox "${ROOTFS_DIR}/bin/${applet}" 2>/dev/null || true
 done
 # sbin 中的命令
@@ -239,6 +239,7 @@ declare -A KO_MAP=(
     ["learn/05_pm"]="virt_pm"
     ["learn/06_dma"]="virt_dma"
     ["learn/07_debug"]="virt_debug"
+    ["hardcode"]="hardcode_samples"
 )
 
 for ch_dir in "${!KO_MAP[@]}"; do
@@ -318,7 +319,8 @@ ok "uapi_test 已放入 rootfs"
 info "Step 5/5: 生成 init 测试脚本..."
 
 cp "${SCRIPT_DIR}/init.sh" "${ROOTFS_DIR}/init"
-chmod +x "${ROOTFS_DIR}/init"
+cp "${SCRIPT_DIR}/lab.sh" "${ROOTFS_DIR}/lab.sh"
+chmod +x "${ROOTFS_DIR}/init" "${ROOTFS_DIR}/lab.sh"
 ok "init 脚本已写入 ${ROOTFS_DIR}/init"
 
 # ── 打包 initramfs ────────────────────────────────────────────────────────────

@@ -9,6 +9,8 @@ qemu_test/
 ├── qemu_test_all.sh   # 一键入口：编译 + 构建 rootfs + 运行 QEMU 测试
 ├── build_rootfs.sh    # 构建最小化 busybox initramfs
 ├── run_qemu.sh        # 启动 QEMU 并收集测试结果
+├── run_chapter.sh     # 只跑一章，并打印客户机里的命令和回显
+├── lab.sh             # 客户机里的单章实验（由 init.sh 在 ldd_chapter= 时调用）
 ├── init.sh            # QEMU 内部的 /init 测试脚本（busybox sh）
 ├── README.md          # 本文档
 └── output/            # 构建产物（由脚本自动生成，不纳入版本控制）
@@ -19,6 +21,19 @@ qemu_test/
     ├── test_summary.txt     # 测试结果摘要
     └── build.log            # 驱动编译日志
 ```
+
+## 单章复现
+
+每一章 README 的「在镜像里复现」给出了要执行的命令、客户机回显和成功标准。镜像入口是：
+
+```bash
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter ch21
+```
+
+`chapter` 调用 `run_chapter.sh`。它打包 initramfs，再用 `run_qemu.sh --chapter` 把 `ldd_chapter=` 写进内核命令行。客户机里的 `init.sh` 看到这个参数后改跑 `lab.sh`，逐条打印命令和回显，最后输出 `[PASS]` 或 `[FAIL]`。`ch00` 没有模块，只在镜像里核对 `driver_template.c`。
+
+章节名用 `ch01`、`ch21`、`learn01`、`hardcode`，或 `all`。
 
 ## 快速开始
 
@@ -94,7 +109,8 @@ bash qemu_test/run_qemu.sh
 |------|------|--------|
 | `--output-dir <dir>` | initramfs/vmlinuz 所在目录 | `qemu_test/output` |
 | `--log <file>` | 串口输出日志路径 | `output/qemu_serial.log` |
-| `--timeout <secs>` | 等待测试完成的超时时间 | `180` 秒 |
+| `--timeout <secs>` | 等待测试完成的超时时间 | `600` 秒 |
+| `--chapter <name>` | 只跑 `lab.sh` 中的一章，并打印命令和回显 | 全量 `init.sh` |
 | `--kvm` | 启用 KVM 加速（需要 `/dev/kvm`） | 否 |
 | `--interactive` | 交互模式（串口连接到终端，调试用） | 否 |
 
