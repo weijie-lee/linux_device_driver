@@ -6,6 +6,17 @@ make[2]: Entering directory '/home/runner/work/linux_device_driver/linux_device_
 warning: the compiler differs from the one used to build the kernel
   The kernel was built by: x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
   You are using:           gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+  CC [M]  kfifo_demo_static.o
+kfifo_demo_static.c:67:5: warning: no previous prototype for ‘test_func’ [-Wmissing-prototypes]
+   67 | int test_func(void)
+      |     ^~~~~~~~~
+  MODPOST Module.symvers
+WARNING: modpost: missing MODULE_DESCRIPTION() in kfifo_demo_static.o
+  CC [M]  kfifo_demo_static.mod.o
+  CC [M]  .module-common.o
+  LD [M]  kfifo_demo_static.ko
+  BTF [M] kfifo_demo_static.ko
+Skipping BTF generation for kfifo_demo_static.ko due to unavailability of vmlinux
 make[2]: Leaving directory '/home/runner/work/linux_device_driver/linux_device_driver/ch01_kernel_basics'
 make[1]: Leaving directory '/usr/src/linux-headers-6.17.0-1022-azure'
 >>> Building ch02_char_basic ...
@@ -52,5 +63,5 @@ make[2]: *** [/usr/src/linux-headers-6.17.0-1022-azure/Makefile:248: __sub-make]
 make[2]: Leaving directory '/home/runner/work/linux_device_driver/linux_device_driver/ch02_char_basic'
 make[1]: *** [Makefile:248: __sub-make] Error 2
 make[1]: Leaving directory '/usr/src/linux-headers-6.17.0-1022-azure'
-make: *** [Makefile:85: ch02_char_basic] Error 2
+make: *** [Makefile:92: ch02_char_basic] Error 2
 make: Leaving directory '/home/runner/work/linux_device_driver/linux_device_driver'
