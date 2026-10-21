@@ -189,7 +189,7 @@ static const struct file_operations virt_uapi_fops = {
 static ssize_t bytes_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
-	struct virt_uapi *p = dev_get_drvdata(dev);
+	struct virt_uapi *p = g_uapi;
 	u32 len;
 
 	if (mutex_lock_interruptible(&p->lock))
@@ -217,6 +217,10 @@ static int __init virt_uapi_init(void)
 		return -ENOMEM;
 	}
 
+	/* misc 核心把 miscdevice 放在 this_device 的 drvdata 里。
+	 * 覆盖它会让 misc_deregister 在 devnode 回调里读到错误指针。
+	 * sysfs 的 bytes 只有一个实例，直接用 g_uapi。
+	 */
 	p->misc.minor = MISC_DYNAMIC_MINOR;
 	p->misc.name = "virt_uapi";
 	p->misc.fops = &virt_uapi_fops;
@@ -224,7 +228,6 @@ static int __init virt_uapi_init(void)
 	if (ret)
 		goto err_page;
 
-	dev_set_drvdata(p->misc.this_device, p);
 	ret = device_create_file(p->misc.this_device, &dev_attr_bytes);
 	if (ret)
 		goto err_misc;

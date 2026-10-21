@@ -118,11 +118,6 @@ static const struct irq_domain_ops sensor_domain_ops = {
 	.map = sensor_map,
 };
 
-static void sensor_clk_off(void *data)
-{
-	clk_disable_unprepare(data);
-}
-
 static ssize_t temperature_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -215,16 +210,22 @@ static int sensor_probe(struct platform_device *pdev)
 					  dev_name(&pdev->dev));
 	if (ret)
 		return ret;
-	s->clk = devm_clk_get(&pdev->dev, "sensor");
+	s->clk = clk_get(&pdev->dev, "sensor");
 	if (IS_ERR(s->clk))
 		return PTR_ERR(s->clk);
 	ret = clk_prepare_enable(s->clk);
-	if (ret)
+	if (ret) {
+		clk_put(s->clk);
 		return ret;
-	ret = devm_add_action_or_reset(&pdev->dev, sensor_clk_off, s->clk);
-	if (ret)
-		return ret;
+	}
 	s->rate = clk_get_rate(s->clk);
+	/*
+	 * 时钟的 owner 在本模块上。一直拿着 clk 引用时 rmmod 会返回 EAGAIN，
+	 * exit 没有机会运行。频率已经记下，这里放开引用。
+	 */
+	clk_disable_unprepare(s->clk);
+	clk_put(s->clk);
+	s->clk = NULL;
 
 	s->domain = irq_domain_add_linear(NULL, 1, &sensor_domain_ops,
 					  &sensor_chip);

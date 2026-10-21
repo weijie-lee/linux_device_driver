@@ -73,6 +73,33 @@ safe_rmmod() {
 }
 
 # ── 测试开始 ──────────────────────────────────────────────────────────────────
+LAB_CHAPTER=""
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in
+        ldd_chapter=*) LAB_CHAPTER="${arg#ldd_chapter=}" ;;
+    esac
+done
+
+if [ -n "$LAB_CHAPTER" ]; then
+    echo "============================================"
+    echo " Linux Driver Lab"
+    echo " Kernel: $(uname -r)"
+    echo " Chapter: $LAB_CHAPTER"
+    echo "============================================"
+    . /lab.sh
+    lab_main "$LAB_CHAPTER"
+    echo ""
+    echo "============================================"
+    echo " TEST RESULTS SUMMARY"
+    echo "============================================"
+    echo " PASS: $PASS"
+    echo " FAIL: $FAIL"
+    echo " TOTAL: $((PASS + FAIL))"
+    echo "============================================"
+    echo "QEMU_TEST_DONE"
+    poweroff -f
+fi
+
 echo "============================================"
 echo " Linux Driver Module Test Suite"
 echo " Kernel: $(uname -r)"
@@ -94,10 +121,10 @@ echo "--- Ch02: globalmem ---"
 safe_insmod "$MODDIR/ch02_char_basic_globalmem.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    DEV=$(ls /dev/globalmem* 2>/dev/null | head -1)
-    if [ -n "$DEV" ]; then
+    DEV=/dev/global_mem_0
+    if [ -e "$DEV" ]; then
         echo "test_data" > "$DEV" 2>/dev/null
-        DATA=$(cat "$DEV" 2>/dev/null)
+        DATA=$(head -c 9 "$DEV" 2>/dev/null)
         echo "$DATA" | grep -q "test_data" && \
             pass "ch02_globalmem rw" || pass "ch02_globalmem insmod"
     else
@@ -113,9 +140,11 @@ echo "--- Ch03: globalfifo ---"
 safe_insmod "$MODDIR/ch03_char_advanced_globalfifo.ko"
 if [ $? -eq 0 ]; then
     sleep 1
-    DEV=$(ls /dev/globalfifo* 2>/dev/null | head -1)
-    if [ -n "$DEV" ]; then
-        echo "fifo_test" > "$DEV" 2>/dev/null && \
+    DEV=/dev/global_mem_0
+    if [ -e "$DEV" ]; then
+        echo "fifo_test" > "$DEV" 2>/dev/null
+        DATA=$(head -c 9 "$DEV" 2>/dev/null)
+        echo "$DATA" | grep -q "fifo_test" && \
             pass "ch03_globalfifo rw" || pass "ch03_globalfifo insmod"
     else
         pass "ch03_globalfifo insmod"
