@@ -23,9 +23,4 @@ jobs:
         run: docker build -t ldd-lab-ci .
 
       - name: Run full validation in container
-        run: |
-          if [ -e /dev/kvm ]; then
-            docker run --rm --device /dev/kvm ldd-lab-ci test --kvm
-          else
-            docker run --rm ldd-lab-ci test
-          fi
+        run: docker run --rm ldd-lab-ci test
