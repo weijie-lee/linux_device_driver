@@ -39,6 +39,43 @@ sudo apt-get install -y \
 
 `device-tree-compiler` 用来编译 `learn/02_devicetree/virt-reg.dts` 和 `learn/04_soc_sensor/virt-sensor.dts`。教学模块不要求宿主机正在运行 5.15。
 
+### 用镜像做实验
+
+不在本机装 5.15 头文件和 QEMU 时，用仓库里的 `Dockerfile` 做实验镜像。镜像基于 Ubuntu 22.04，里面是 GCC 11、`linux-headers-5.15.0-173-generic`、对应的 `vmlinuz` 和 `linux-modules-extra`，以及 QEMU、busybox、`dtc`。源码在镜像内的 `/linux_device_driver`。镜像大约 1.5 GB，主要是 5.15 的头文件和模块。
+
+```bash
+docker build -t ldd-lab .
+docker run --rm -it ldd-lab
+```
+
+进入容器后和在本机仓库根目录一样：`make`、`cd learn/01_uapi && make`、`bash qemu_test/qemu_test_all.sh`。容器进程看到的 `uname -r` 是宿主机内核，这些 `.ko` 不能在容器里 `insmod`。加载在镜像启动的 QEMU 客户机里完成。
+
+一条命令跑完全部 QEMU 检查：
+
+```bash
+docker run --rm ldd-lab test
+```
+
+`test` 后面的参数会传给 `qemu_test/qemu_test_all.sh`，例如 `--timeout 600`。只打包 initramfs 用 `docker run --rm ldd-lab build`。已经打好包、想进客户机串口时：
+
+```bash
+docker run --rm -it ldd-lab qemu --interactive
+```
+
+退出串口是 Ctrl-A 然后 X。
+
+改本机代码再在镜像里编译时，把仓库挂到同一路径：
+
+```bash
+docker run --rm -it -v "$PWD":/linux_device_driver ldd-lab
+```
+
+宿主机有 `/dev/kvm` 时把设备交给容器，测试会快很多：
+
+```bash
+docker run --rm --device /dev/kvm ldd-lab test --kvm
+```
+
 编译一章，或编译全部：
 
 ```bash
