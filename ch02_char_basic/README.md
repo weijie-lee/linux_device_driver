@@ -316,188 +316,44 @@ unregister_chrdev_region()
 - 如果先 `class_destroy()`，再 `device_destroy()` 会访问已释放的内存
 - 必须先销毁设备文件，再销毁类，最后释放驱动程序
 
-## 编译方法
+## 在镜像里复现
+
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
 
 ```bash
-cd ch02_char_basic
-make
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter ch02
 ```
 
-**编译输出**：
-- `globalmem.ko`：字符设备驱动模块
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
 
-## 验证方法
+```
++ insmod /lib/modules/driver_test/ch02_char_basic_globalmem.ko
+insmod ok
++ ls /dev/global_mem_0 /dev/global_mem_1 /dev/global_mem_2 /dev/global_mem_3
+/dev/global_mem_0
+/dev/global_mem_1
+/dev/global_mem_2
+/dev/global_mem_3
++ echo test_data > /dev/global_mem_0
++ head -c 9 /dev/global_mem_0
+test_data
++ rmmod globalmem
+rmmod ok
+[PASS] ch02_globalmem
+```
 
-### 方法 1：基本加载和卸载
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] ch02_globalmem`
+- `head -c 9 /dev/global_mem_0` 是 `test_data`。设备节点是 `global_mem_0` 到 `global_mem_3`，不是 `/dev/globalmem`。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 
 ```bash
-# 加载模块
-sudo insmod globalmem.ko
-
-# 查看分配的设备号
-dmesg | grep "chrdev alloc"
-# 输出：chrdev alloc success, major:243, minor:0
-
-# 查看设备文件
-ls -la /dev/global_mem_*
-
-# 卸载模块
-sudo rmmod globalmem
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter ch02
 ```
-
-### 方法 2：读写测试
-
-```bash
-# 加载模块
-sudo insmod globalmem.ko
-
-# 写入数据
-echo "Hello, Linux Driver!" > /dev/global_mem_0
-
-# 读取数据
-cat /dev/global_mem_0
-# 输出：Hello, Linux Driver!
-
-# 多次写入（追加）
-echo "Line 2" > /dev/global_mem_0
-cat /dev/global_mem_0
-# 输出：Line 2（覆盖了之前的内容）
-
-# 使用 dd 进行更精确的测试
-dd if=/dev/zero of=/dev/global_mem_0 bs=1 count=100
-dd if=/dev/global_mem_0 of=/tmp/test.bin bs=1 count=100
-hexdump -C /tmp/test.bin
-```
-
-### 方法 3：ioctl 测试
-
-编写测试程序 `test_ioctl.c`：
-
-```c
-#include <stdio.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <string.h>
-
-#define GLOBAL_MEM_MAGIC 'g'
-#define MEM_CLEAR _IO(GLOBAL_MEM_MAGIC, 0)
-
-int main(int argc, char **argv)
-{
-    int fd = open("/dev/global_mem_0", O_RDWR);
-    if (fd < 0) {
-        perror("open");
-        return 1;
-    }
-
-    // 写入数据
-    char buf[100] = "Test data";
-    write(fd, buf, strlen(buf));
-
-    // 读取验证
-    memset(buf, 0, sizeof(buf));
-    read(fd, buf, sizeof(buf));
-    printf("Before clear: %s\n", buf);
-
-    // 清空缓冲区
-    ioctl(fd, MEM_CLEAR, 0);
-    printf("Buffer cleared!\n");
-
-    // 读取验证（应该为空）
-    memset(buf, 0, sizeof(buf));
-    read(fd, buf, sizeof(buf));
-    printf("After clear: %s\n", buf);
-
-    close(fd);
-    return 0;
-}
-```
-
-编译和运行：
-
-```bash
-gcc -o test_ioctl test_ioctl.c
-sudo ./test_ioctl
-```
-
-### 方法 4：自动化测试
-
-```bash
-cd ch02_char_basic/tests
-bash test.sh
-```
-
-## QEMU 实验结果
-
-### 测试环境
-
-| 项目 | 配置 |
-|------|------|
-| **QEMU 版本** | 6.2.0 |
-| **内核版本** | 5.15.0-173-generic |
-| **机器类型** | Q35 |
-| **内存** | 512 MB |
-| **CPU** | 2 核 |
-| **rootfs** | busybox 1.30.1 |
-
-### 测试结果
-
-**总体结果**：✅ **PASS**
-
-```
-=== Ch02 Character Device Basic ===
-[PASS] globalmem.ko loaded successfully
-[PASS] Device files created: /dev/global_mem_0 - /dev/global_mem_3
-[PASS] Write and read operations successful
-[PASS] ioctl MEM_CLEAR command successful
-[PASS] globalmem.ko unloaded successfully
-=== Ch02 Test Summary ===
-PASS: 1
-FAIL: 0
-```
-
-### 详细日志
-
-**模块加载阶段**：
-
-```
-[  15.234567] globalmem: loading out-of-tree module taints kernel.
-[  15.234678] globalmem: module verification failed: signature and/or required key missing - tainting kernel
-[  15.234789] chrdev alloc success, major:243, minor:0
-[  15.234890] globalmem: device 0 registered
-[  15.234901] globalmem: device 1 registered
-[  15.234912] globalmem: device 2 registered
-[  15.234923] globalmem: device 3 registered
-```
-
-**读写操作日志**：
-
-```
-[  20.123456] globalmem: wrote 20 byte(s) at offset 0
-[  20.234567] globalmem: read 20 byte(s) from offset 0
-[  20.345678] globalmem: buffer cleared
-```
-
-**模块卸载阶段**：
-
-```
-[  25.567890] globalmem: device 0 unregistered
-[  25.567901] globalmem: device 1 unregistered
-[  25.567912] globalmem: device 2 unregistered
-[  25.567923] globalmem: device 3 unregistered
-[  25.568034] Goodbye from globalmem
-```
-
-### 关键验证点
-
-1. ✅ 模块成功加载，无编译警告
-2. ✅ 动态分配设备号成功（主设备号 243）
-3. ✅ 4 个设备文件自动创建（/dev/global_mem_0-3）
-4. ✅ 写入操作正常：20 字节写入成功
-5. ✅ 读取操作正常：读取的数据与写入的完全相同
-6. ✅ ioctl 清空操作正常：MEM_CLEAR 命令成功执行
-7. ✅ 并发控制正常：mutex 保护共享资源
-8. ✅ 模块卸载成功，无内存泄漏
 
 ## 常见问题
 

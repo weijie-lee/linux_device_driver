@@ -1,12 +1,58 @@
-# ch65_v4l2: V4L2 视频
+# V4L2
 
-登记一个只实现 querycap 的视频采集节点。依赖 videodev.ko 与 mc.ko。
+## 代码知识点
 
-本目录是不依赖真实硬件的虚拟驱动。模块自己创建 platform 设备并完成子系统注册，可在 QEMU（Linux 5.15）里 insmod / rmmod。
+V4L2 设备是 `video_device`。`v4l2_device_register()` 登记驱动，`video_register_device()` 得到 `/dev/videoN`。`v4l2_file_operations` 至少要有 `unlocked_ioctl` 走到 `video_ioctl2`，`vidioc_querycap` 报告驱动名。
+
+本设备报告能力，不采集帧。节点在 `/sys/class/video4linux/`。
+
+## 代码架构
+
+```
+v4l2_device_register
+video_device
+  fops + ioctl_ops.querycap
+video_register_device → /dev/videoN
+```
+
+## 在镜像里复现
+
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
 
 ```bash
-cd ch65_v4l2
-make
-sudo insmod virt_v4l2.ko
-sudo rmmod virt_v4l2
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter ch65
+```
+
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+
+```
++ insmod /lib/modules/driver_test/ch65_v4l2_virt_v4l2.ko
+insmod ok
++ lsmod | grep virt_v4l2
+virt_v4l2              16384  0 
+videodev              258048  1 virt_v4l2
++ find /sys /dev /proc -name '*virt_v4l2*' 2>/dev/null | head -n 30
+/sys/devices/platform/virt_v4l2
+/sys/bus/platform/devices/virt_v4l2
+/sys/bus/platform/drivers/virt_v4l2
+/sys/bus/platform/drivers/virt_v4l2/virt_v4l2
+/sys/module/videodev/holders/virt_v4l2
+/sys/module/virt_v4l2
+/sys/module/virt_v4l2/drivers/platform:virt_v4l2
++ rmmod virt_v4l2
+rmmod ok
+[PASS] ch65_v4l2
+```
+
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] ch65_v4l2`
+- 能找到 `virt_v4l2`。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
+
+```bash
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter ch65
 ```

@@ -43,3 +43,51 @@ target remote :1234
 ```
 
 客户机内核是 Ubuntu 的 `vmlinuz`，没有带调试信息的 vmlinux 时，断点只能落到模块的 `add-symbol-file`。先在客户机里看 `/sys/module/virt_debug/sections/.text` 的地址，再把 `virt_debug.ko` 配这个地址加载进 gdb。
+
+## 在镜像里复现
+
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
+
+```bash
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter learn07
+```
+
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+
+```
++ insmod /lib/modules/driver_test/learn_07_debug_virt_debug.ko
+insmod ok
++ echo 1 > /sys/devices/platform/virt_debug/trigger
++ dmesg | grep virt_debug
+[   98.972738] virt_debug: ping info
++ echo 'module virt_debug +p' > /sys/kernel/debug/dynamic_debug/control
++ echo 1 > /sys/devices/platform/virt_debug/trigger
++ dmesg | grep 'ping debug'
+[   99.006083] virt_debug: ping debug
++ echo 0 > /sys/kernel/tracing/tracing_on
++ echo nop > /sys/kernel/tracing/current_tracer
++ echo function > /sys/kernel/tracing/current_tracer
++ echo virt_debug_ping > /sys/kernel/tracing/set_ftrace_filter
++ echo > /sys/kernel/tracing/trace
++ echo 1 > /sys/kernel/tracing/tracing_on
++ echo 1 > /sys/devices/platform/virt_debug/trigger
++ echo 0 > /sys/kernel/tracing/tracing_on
++ grep virt_debug_ping /sys/kernel/tracing/trace
+              sh-1       [001] .....   104.826222: virt_debug_ping <-trigger_store
++ rmmod virt_debug
+rmmod ok
+[PASS] learn07_debug
+```
+
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] learn07_debug`
+- 打开 dyndbg 之前只有 `ping info`，之后有 `ping debug`，ftrace 里有 `virt_debug_ping`。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
+
+```bash
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter learn07
+```

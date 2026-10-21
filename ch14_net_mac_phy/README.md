@@ -1,160 +1,53 @@
-# Ch14: 以太网
+# MAC 和 PHY
 
-## 章节概述
+## 代码知识点
 
-本章介绍 以太网 MAC/PHY 驱动。涵盖的核心知识点包括：MAC 驱动、PHY 驱动、链接状态。
+以太网驱动通常分成 MAC 和 PHY。MAC 负责 `net_device` 和收发，PHY 负责链路速率和双工，中间用 MDIO。本模块把两步收成一块虚拟网卡 `veth0_mac`：随机本地 MAC、`IFF_NOARP`、`NETIF_F_LOOPBACK`，并注册 NAPI。
 
-## 知识点详解
-
-### 1. 核心概念
-
-以太网 MAC/PHY 驱动是 Linux 驱动开发中的重要组成部分。本章通过实际代码示例，展示了如何使用 Linux 内核提供的相关 API 进行驱动开发。
-
-**关键 API**：phy_register_driver、phy_connect、phy_start、phy_stop
-
-### 2. 架构设计
-
-本章的驱动采用标准的 Linux 驱动框架，遵循内核的设计规范。驱动的核心功能通过模块化的方式实现，便于理解和扩展。
-
-### 3. 实现细节
-
-驱动实现了完整的初始化、操作和清理流程，包括：
-- 资源申请和初始化
-- 设备注册和绑定
-- 数据传输和控制
-- 错误处理和异常管理
-- 资源释放和清理
+`ethtool_ops` 提供驱动名和链路信息。打开接口时 `netif_napi_add` 已经在注册前做完。
 
 ## 代码架构
 
-### 核心数据结构
+```
+alloc_etherdev
+  name = veth0_mac
+  netdev_ops + ethtool_ops
+  netif_napi_add
+register_netdev
+```
 
-驱动定义了必要的数据结构来管理设备状态和资源。这些结构体遵循 Linux 内核的设计模式，通常包含：
-- 设备控制结构体
-- 操作函数指针
-- 资源管理字段
-- 并发控制机制
+## 在镜像里复现
 
-### 初始化流程
-
-1. **模块加载**：注册驱动程序
-2. **设备探测**：检测和初始化硬件
-3. **资源申请**：分配必要的内核资源
-4. **接口注册**：向用户空间或其他驱动暴露接口
-
-### 退出流程
-
-1. **接口注销**：撤销向外暴露的接口
-2. **资源释放**：释放所有申请的资源
-3. **驱动注销**：注销驱动程序
-
-## 编译方法
+模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
 
 ```bash
-cd ch14_net_mac_phy
-make
+docker build -t ldd-lab .
+docker run --rm ldd-lab chapter ch14
 ```
 
-**编译输出**：
-- 相关的 .ko 驱动模块文件
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
 
-## 验证方法
+```
++ insmod /lib/modules/driver_test/ch14_net_mac_phy_eth_mac.ko
+insmod ok
++ ip link
+1: lo: <LOOPBACK> mtu 65536 qdisc noop qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+4: veth0_mac: <BROADCAST,MULTICAST,NOARP> mtu 1500 qdisc noop qlen 1000
+    link/ether 6a:41:2b:2e:31:a8 brd ff:ff:ff:ff:ff:ff
++ rmmod eth_mac
+rmmod ok
+[PASS] ch14_eth_mac
+```
 
-### 基本加载和卸载
+实验成功要同时满足：
+
+- 这条 `docker run` 的退出码是 0
+- 回显里有 `[PASS] ch14_eth_mac`
+- `ip link` 里有 `veth0_mac`。
+
+想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 
 ```bash
-# 加载模块
-sudo insmod *.ko
-
-# 查看内核日志
-dmesg | tail
-
-# 卸载模块
-sudo rmmod *
+docker run --rm -v "$PWD":/linux_device_driver ldd-lab chapter ch14
 ```
-
-### 功能测试
-
-根据驱动的具体功能进行相应的测试：
-- 设备文件操作测试
-- 数据传输测试
-- 控制命令测试
-- 并发访问测试
-
-### 自动化测试
-
-```bash
-cd ch14_net_mac_phy/tests
-bash test.sh
-```
-
-## QEMU 实验结果
-
-### 测试环境
-
-| 项目 | 配置 |
-|------|------|
-| **QEMU 版本** | 6.2.0 |
-| **内核版本** | 5.15.0-173-generic |
-| **机器类型** | Q35 |
-| **内存** | 512 MB |
-| **CPU** | 2 核 |
-| **rootfs** | busybox 1.30.1 |
-
-### 测试结果
-
-**总体结果**：✅ **PASS**
-
-```
-=== Ch14: 以太网 ===
-[PASS] Module loaded successfully
-[PASS] Functionality verified
-[PASS] Module unloaded successfully
-=== Test Summary ===
-PASS: 1
-FAIL: 0
-```
-
-### 关键验证点
-
-1. ✅ 模块成功加载，无编译警告
-2. ✅ 驱动功能正常
-3. ✅ 资源管理正确
-4. ✅ 模块卸载成功，无内存泄漏
-
-## 常见问题
-
-### Q: 如何调试驱动？
-
-A: 可以使用以下方法：
-- 查看内核日志：`dmesg | tail -f`
-- 使用 printk 添加调试信息
-- 使用 kgdb 进行内核调试
-- 使用 ftrace 进行性能分析
-
-### Q: 如何处理驱动中的错误？
-
-A: Linux 驱动中的错误处理通常使用：
-- 返回错误码（-ERRNO）
-- 使用 goto 进行错误清理
-- 使用 devm_* 函数自动管理资源
-
-### Q: 如何支持多个设备实例？
-
-A: 通过以下方式：
-- 使用设备列表管理多个实例
-- 为每个实例分配独立的资源
-- 使用次设备号区分不同实例
-
-## 参考资源
-
-- **Linux Kernel Documentation**：https://www.kernel.org/doc/html/latest/
-- **Linux Device Drivers, 3rd Edition**：https://lwn.net/Kernel/LDD3/
-- **Kernel Source Code**：https://elixir.bootlin.com/linux/v5.15/
-
----
-
-**最后更新**：2026 年 3 月 26 日  
-**章节版本**：1.0.0  
-**内核支持**：5.15.0+  
-**测试状态**：✅ PASS (QEMU)
