@@ -100,6 +100,7 @@ linux_device_driver/
 ├── ch20_usb_bus/              # USB
 ├── ch21_gpio/ … ch68_interconnect/  # 其余子系统，见下表
 ├── qemu_test/                 # rootfs、QEMU、init
+├── hardcode/                  # 数据结构与设计模式，带可编译短例子
 ├── LINUX_DRIVER_COVERAGE.md   # drivers/ 目录对照
 ├── TEST_RESULTS.md            # 最近一次 QEMU 结果
 └── README.md
