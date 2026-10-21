@@ -2,7 +2,12 @@ name: Docker Validation
 
 on:
   push:
+    branches:
+      - master
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   docker-qemu-test:
@@ -18,4 +23,4 @@ jobs:
         run: docker build -t ldd-lab-ci .
 
       - name: Run full validation in container
-        run: docker run --rm ldd-lab-ci test
+        run: docker run --rm --entrypoint bash ldd-lab-ci qemu_test/qemu_test_all.sh
