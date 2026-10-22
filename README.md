@@ -2,6 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-GPL%202.0-blue)](LICENSE)
 [![Kernel](https://img.shields.io/badge/kernel-5.15.0--173-orange)](https://www.kernel.org/)
+[![Docker Validation](https://github.com/weijie-lee/linux_device_driver/actions/workflows/docker-validation.yml/badge.svg)](https://github.com/weijie-lee/linux_device_driver/actions/workflows/docker-validation.yml)
 
 面向内核 **5.15** 的 Linux 驱动教学仓库。目标是从模块和字符设备走到能写一块小的 SoC 外设：用户接口、设备树资源、中断、regmap、时钟、电源管理和 DMA 串在同一条线上，并在 QEMU 客户机里检查。
 
