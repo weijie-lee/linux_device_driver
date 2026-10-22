@@ -188,7 +188,7 @@ sudo apt-get install linux-headers-5.15.0-173-generic \
 增大超时时间（默认 600 秒）：
 
 ```bash
-bash qemu_test/qemu_test_all.sh --timeout 300
+bash qemu_test/qemu_test_all.sh --timeout 900
 ```
 
 **Q: 调试某个驱动**
@@ -201,15 +201,17 @@ bash qemu_test/run_qemu.sh --interactive
 
 **Q: 在 CI/CD 环境中运行**
 
-```yaml
-# GitHub Actions 示例
-- name: Install dependencies
-  run: |
-    sudo apt-get install -y qemu-system-x86 busybox-static cpio gzip \
-      linux-headers-5.15.0-173-generic linux-image-5.15.0-173-generic
+直接用镜像，不需要在 runner 上装 QEMU 和 5.15 头文件。仓库里的 `.github/workflows/docker-validation.yml` 就是这样做的：
 
-- name: Run QEMU tests
-  run: bash qemu_test/qemu_test_all.sh --timeout 240
+```yaml
+- name: Build Docker image
+  run: docker build -t ldd-lab-ci .
+
+- name: Run the smoke suite in the container
+  run: docker run --rm ldd-lab-ci test
+
+- name: Run every chapter lab from the READMEs
+  run: docker run --rm ldd-lab-ci chapter all
 ```
 
 ## 已知测试结果
