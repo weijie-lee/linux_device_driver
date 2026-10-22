@@ -605,6 +605,38 @@ else
     fail "learn07_debug" "$(cat /tmp/insmod_err)"
 fi
 
+echo "--- kernel/01 driver framework ---"
+safe_insmod "$MODDIR/kernel_01_driver_framework_virt_framework.ko"
+if [ $? -eq 0 ]; then
+    tr=$(cat /sys/bus/lddfw/trace 2>/dev/null)
+    expect="bus_register > uevent lddfw-sensor > uevent lddfw-other > match lddfw-sensor 1 > bus_probe lddfw-sensor > driver_probe lddfw-sensor > uevent lddfw-sensor > match lddfw-other 0"
+    b1=$(cat /sys/bus/lddfw/devices/lddfw-sensor/bound 2>/dev/null)
+    id1=$(cat /sys/bus/lddfw/devices/lddfw-sensor/id 2>/dev/null)
+    b0=$(cat /sys/bus/lddfw/devices/lddfw-other/bound 2>/dev/null)
+    id0=$(cat /sys/bus/lddfw/devices/lddfw-other/id 2>/dev/null)
+    if [ "$tr" = "$expect" ] && [ "$b1" = "1" ] && [ "$id1" = "sensor" ] && \
+       [ "$b0" = "0" ] && [ "$id0" = "other" ] && \
+       [ -e /sys/bus/lddfw/devices/lddfw-sensor/driver ] && \
+       [ ! -e /sys/bus/lddfw/devices/lddfw-other/driver ]; then
+        safe_rmmod virt_framework
+        if ! lsmod | grep -q "^virt_framework" && \
+           dmesg | grep -q "lddfw: bus_remove lddfw-sensor" && \
+           dmesg | grep -q "lddfw: driver_remove lddfw-sensor" && \
+           dmesg | grep -q "lddfw: release lddfw-sensor" && \
+           dmesg | grep -q "lddfw: release lddfw-other" && \
+           dmesg | grep -q "lddfw: bus_unregister"; then
+            pass "kernel01_framework"
+        else
+            fail "kernel01_framework" "rmmod or release missing"
+        fi
+    else
+        fail "kernel01_framework" "trace=$tr bound=$b1/$b0 id=$id1/$id0"
+        safe_rmmod virt_framework
+    fi
+else
+    fail "kernel01_framework" "$(cat /tmp/insmod_err)"
+fi
+
 # ── 汇总 ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"

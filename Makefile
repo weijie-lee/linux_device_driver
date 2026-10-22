@@ -4,7 +4,7 @@
 KERNEL_DIR ?= /lib/modules/5.15.0-173-generic/build
 PWD := $(shell pwd)
 
-# 所有可编译章节（按学习顺序排列）
+# 所有可编译目录。kernel/ 是驱动框架拆解，不和 ch* 的具体驱动混在一条学习顺序里。
 CHAPTERS := \
 	ch01_kernel_basics \
 	ch02_char_basic \
@@ -81,7 +81,8 @@ CHAPTERS := \
 	learn/04_soc_sensor \
 	learn/05_pm \
 	learn/06_dma \
-	learn/07_debug
+	learn/07_debug \
+	kernel/01_driver_framework
 
 .PHONY: all clean test lab help $(CHAPTERS)
 
@@ -117,6 +118,7 @@ help:
 	@echo "  make clean        清理所有编译产物"
 	@echo "  make test         在 QEMU 客户机里加载全部模块并检查"
 	@echo "  make lab CHAPTER=ch21  在客户机里跑一章，打印命令和回显"
+	@echo "  make lab CHAPTER=kernel01  跑驱动框架拆解"
 	@echo "  make ch02_char_basic  编译指定章节"
 	@echo ""
 	@echo "章节列表："

@@ -15,7 +15,7 @@ Linux 驱动实验镜像（编译与 QEMU 客户机均为 5.15.0-173-generic）
       编译全部章节并在 QEMU 里跑 init.sh。
 
   docker run --rm ldd-lab chapter ch21
-      只跑某一章，客户机回显命令和结果。章节名如 ch01、ch21、learn01、hardcode、all。
+      只跑某一章，客户机回显命令和结果。章节名如 ch01、ch21、learn01、hardcode、kernel01、all。
 
   docker run --rm ldd-lab build
       只编译并打包 initramfs。

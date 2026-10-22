@@ -586,6 +586,59 @@ lab_learn07() {
     finish
 }
 
+lab_kernel01() {
+    begin "kernel01_framework"
+    load "$MODDIR/kernel_01_driver_framework_virt_framework.ko" || { finish; return; }
+    expect="bus_register > uevent lddfw-sensor > uevent lddfw-other > match lddfw-sensor 1 > bus_probe lddfw-sensor > driver_probe lddfw-sensor > uevent lddfw-sensor > match lddfw-other 0"
+    run "cat /sys/bus/lddfw/trace"
+    if [ "$LAST" = "$expect" ]; then
+        echo "trace ok"
+    else
+        echo "trace mismatch"
+        ok=0
+    fi
+    run "cat /sys/bus/lddfw/drivers_autoprobe"
+    want "1"
+    run "cat /sys/bus/lddfw/devices/lddfw-sensor/bound /sys/bus/lddfw/devices/lddfw-sensor/id"
+    want "1"
+    want "sensor"
+    run "cat /sys/bus/lddfw/devices/lddfw-other/bound /sys/bus/lddfw/devices/lddfw-other/id"
+    want "0"
+    want "other"
+    echo "+ test -e /sys/bus/lddfw/devices/lddfw-sensor/driver"
+    if [ -e /sys/bus/lddfw/devices/lddfw-sensor/driver ]; then
+        echo "sensor bound"
+    else
+        echo "sensor driver link missing"
+        ok=0
+    fi
+    echo "+ test ! -e /sys/bus/lddfw/devices/lddfw-other/driver"
+    if [ -e /sys/bus/lddfw/devices/lddfw-other/driver ]; then
+        echo "other unexpectedly bound"
+        ok=0
+    else
+        echo "other unbound"
+    fi
+    run "ls /sys/bus/lddfw/drivers/lddfw_drv"
+    want "lddfw-sensor"
+    if printf '%s\n' "$LAST" | grep -F -q "lddfw-other"; then
+        echo "other device is listed under the driver"
+        ok=0
+    fi
+    run "ls /sys/bus"
+    want "lddfw"
+    want "platform"
+    want "pci"
+    unload virt_framework
+    run "dmesg | grep lddfw:"
+    want "bus_remove lddfw-sensor"
+    want "driver_remove lddfw-sensor"
+    want "release lddfw-sensor"
+    want "release lddfw-other"
+    want "bus_unregister"
+    finish
+}
+
 lab_main() {
     case "$1" in
         all)
@@ -604,6 +657,7 @@ lab_main() {
             lab_hardcode
             lab_learn01; lab_learn02; lab_learn03; lab_learn04
             lab_learn05; lab_learn06; lab_learn07
+            lab_kernel01
             ;;
         ch01|ch01_kernel_basics) lab_ch01 ;;
         ch02|ch02_char_basic) lab_ch02 ;;
@@ -681,6 +735,7 @@ lab_main() {
         learn05|learn/05_pm|learn/05) lab_learn05 ;;
         learn06|learn/06_dma|learn/06) lab_learn06 ;;
         learn07|learn/07_debug|learn/07) lab_learn07 ;;
+        kernel01|kernel/01|kernel/01_driver_framework) lab_kernel01 ;;
         *)
             echo "未知章节: $1"
             fail "lab" "unknown chapter $1"

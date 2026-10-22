@@ -267,6 +267,8 @@ struct device           struct device_driver
          match() 成功 → driver->probe(device)
 ```
 
+把这张图按 5.15 `drivers/base` 的函数展开，并在客户机里看到 `match`、`probe`、`uevent` 的真实顺序，读 [kernel/01_driver_framework](../kernel/01_driver_framework)。`ch02` 的字符设备不走这条匹配；`ch06` 的 platform 和 `ch19` 的 PCI 都是这条总线上的特例。
+
 ### 4.2 I2C 驱动框架
 
 ```c
