@@ -37,7 +37,7 @@ static int find_virt_kbd_event(char *event_path, size_t len)
 {
 	DIR *dir;
 	struct dirent *ent;
-	char name_path[256], name[64];
+	char name_path[320], name[64];
 	FILE *f;
 
 	dir = opendir(SYSFS_INPUT);
@@ -53,7 +53,10 @@ static int find_virt_kbd_event(char *event_path, size_t len)
 		if (!f) continue;
 
 		memset(name, 0, sizeof(name));
-		fgets(name, sizeof(name), f);
+		if (!fgets(name, sizeof(name), f)) {
+			fclose(f);
+			continue;
+		}
 		fclose(f);
 
 		/* 去掉末尾换行 */
@@ -71,7 +74,7 @@ static int find_virt_kbd_event(char *event_path, size_t len)
 
 int main(void)
 {
-	char event_path[256];
+	char event_path[320];
 	int fd_event, fd_proc;
 	struct input_event ev;
 	fd_set rfds;

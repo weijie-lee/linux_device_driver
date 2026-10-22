@@ -742,6 +742,85 @@ else
     fail "kernel02_interface" "$(cat /tmp/insmod_err)"
 fi
 
+echo "--- kernel/03 driver calls kernel ---"
+TR=/sys/kernel/tracing
+if [ ! -f "$TR/trace" ]; then
+    TR=/sys/kernel/debug/tracing
+fi
+call_arm() {
+    echo 0 > "$TR/tracing_on"
+    echo nop > "$TR/current_tracer"
+    echo function > "$TR/current_tracer" || return 1
+    first=1
+    for fn in "$@"; do
+        if [ "$first" -eq 1 ]; then
+            echo "$fn" > "$TR/set_ftrace_filter" || return 1
+            first=0
+        else
+            echo "$fn" >> "$TR/set_ftrace_filter" || return 1
+        fi
+    done
+    echo > "$TR/trace"
+    echo 1 > "$TR/tracing_on"
+    return 0
+}
+call_hits() {
+    hits=""
+    while IFS= read -r line; do
+        case "$line" in
+            *": vfs_write <-"*) hits="$hits vfs_write" ;;
+            *": virt_call_write <-"*) hits="$hits virt_call_write" ;;
+            *": _copy_from_user <-"*) hits="$hits _copy_from_user" ;;
+            *": vfs_read <-"*) hits="$hits vfs_read" ;;
+            *": virt_call_read <-"*) hits="$hits virt_call_read" ;;
+            *": _copy_to_user <-"*) hits="$hits _copy_to_user" ;;
+        esac
+    done < "$TR/trace"
+    echo "$hits"
+}
+call_off() {
+    echo 0 > "$TR/tracing_on" 2>/dev/null
+    echo nop > "$TR/current_tracer" 2>/dev/null
+    echo 1 > "$TR/tracing_on" 2>/dev/null
+}
+safe_insmod "$MODDIR/kernel_03_driver_calls_virt_call.ko"
+if [ $? -eq 0 ] && [ -f "$TR/trace" ] && [ -c /dev/virt_call ]; then
+    write_expect=" vfs_write virt_call_write _copy_from_user"
+    read_expect=" vfs_read virt_call_read _copy_to_user"
+    if call_arm vfs_write virt_call_write _copy_from_user; then
+        printf ping > /dev/virt_call
+        echo 0 > "$TR/tracing_on"
+        write_hits=$(call_hits)
+        call_off
+    else
+        write_hits=""
+        call_off
+    fi
+    if call_arm vfs_read virt_call_read _copy_to_user; then
+        head -c 4 /dev/virt_call > /tmp/call_out
+        echo 0 > "$TR/tracing_on"
+        read_hits=$(call_hits)
+        call_off
+    else
+        read_hits=""
+        call_off
+    fi
+    data=$(cat /tmp/call_out 2>/dev/null)
+    safe_rmmod virt_call
+    if [ "$write_hits" = "$write_expect" ] && [ "$read_hits" = "$read_expect" ] && \
+       [ "$data" = "ping" ] && \
+       ! lsmod | grep -q "^virt_call" && \
+       dmesg | grep -q "virt_call: stored 4" && \
+       dmesg | grep -q "virt_call: returned 4"; then
+        pass "kernel03_calls"
+    else
+        fail "kernel03_calls" "write=[$write_hits] read=[$read_hits] data=$data"
+    fi
+else
+    call_off
+    fail "kernel03_calls" "$(cat /tmp/insmod_err)"
+fi
+
 # ── 汇总 ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"

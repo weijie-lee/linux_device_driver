@@ -170,9 +170,10 @@ static const struct file_operations i2c_virt_fops = {
 static int i2c_virt_slave_probe(struct i2c_client *client,
 			       const struct i2c_device_id *id)
 {
-	(void)id;
 	struct i2c_virt_client *priv;
 	int ret;
+
+	(void)id;
 
 	if (!i2c_check_functionality(client->adapter,
 				     I2C_FUNC_I2C | I2C_FUNC_SMBUS_BYTE_DATA)) {

@@ -83,7 +83,8 @@ CHAPTERS := \
 	learn/06_dma \
 	learn/07_debug \
 	kernel/01_driver_framework \
-	kernel/02_kernel_interface
+	kernel/02_kernel_interface \
+	kernel/03_driver_calls
 
 .PHONY: all clean test lab help $(CHAPTERS)
 

@@ -20,6 +20,15 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+
+static void sh(const char *cmd)
+{
+	int status = system(cmd);
+
+	(void)status;
+}
+
+
 #define MODULE_NAME  "vmem_disk"
 #define DEVICE_PATH  "/dev/vmem_disk"
 #define MOUNT_POINT  "/tmp/vmem_test"
@@ -35,8 +44,8 @@ int main(void)
 	printf("=== Ch17 vmem_disk 用户态测试程序 ===\n\n");
 
 	/* 清理残留 */
-	system("umount " MOUNT_POINT " 2>/dev/null");
-	system("rmmod " MODULE_NAME " 2>/dev/null");
+	sh("umount " MOUNT_POINT " 2>/dev/null");
+	sh("rmmod " MODULE_NAME " 2>/dev/null");
 
 	/* STEP 1: 加载模块 */
 	printf("[STEP 1] 加载 %s.ko ...\n", MODULE_NAME);
@@ -56,7 +65,7 @@ int main(void)
 			printf("  [PASS] %s 是块设备\n", DEVICE_PATH);
 		} else {
 			fprintf(stderr, "[FAIL] %s 不是块设备或不存在\n", DEVICE_PATH);
-			system("rmmod " MODULE_NAME " 2>/dev/null");
+			sh("rmmod " MODULE_NAME " 2>/dev/null");
 			return 1;
 		}
 	}
@@ -84,7 +93,7 @@ int main(void)
 		printf("  [PASS] mkfs.ext4 成功\n");
 	} else {
 		fprintf(stderr, "[FAIL] mkfs.ext4 失败\n");
-		system("rmmod " MODULE_NAME " 2>/dev/null");
+		sh("rmmod " MODULE_NAME " 2>/dev/null");
 		return 1;
 	}
 
@@ -94,7 +103,7 @@ int main(void)
 	ret = system("mount " DEVICE_PATH " " MOUNT_POINT);
 	if (ret != 0) {
 		fprintf(stderr, "[FAIL] mount 失败\n");
-		system("rmmod " MODULE_NAME " 2>/dev/null");
+		sh("rmmod " MODULE_NAME " 2>/dev/null");
 		return 1;
 	}
 	printf("  [PASS] 挂载成功\n");
@@ -104,8 +113,8 @@ int main(void)
 	f = fopen(TEST_FILE, "w");
 	if (!f) {
 		fprintf(stderr, "[FAIL] 创建 %s 失败: %s\n", TEST_FILE, strerror(errno));
-		system("umount " MOUNT_POINT " 2>/dev/null");
-		system("rmmod " MODULE_NAME " 2>/dev/null");
+		sh("umount " MOUNT_POINT " 2>/dev/null");
+		sh("rmmod " MODULE_NAME " 2>/dev/null");
 		return 1;
 	}
 	fputs(TEST_DATA, f);
@@ -119,7 +128,8 @@ int main(void)
 		fprintf(stderr, "[FAIL] 读取 %s 失败\n", TEST_FILE);
 	} else {
 		memset(buf, 0, sizeof(buf));
-		fgets(buf, sizeof(buf), f);
+		if (!fgets(buf, sizeof(buf), f))
+			buf[0] = '\0';
 		fclose(f);
 		if (strcmp(buf, TEST_DATA) == 0) {
 			printf("  [PASS] 数据一致: \"%s\"\n", buf);
@@ -131,7 +141,7 @@ int main(void)
 
 	/* STEP 8: 卸载文件系统 */
 	printf("[STEP 8] 卸载文件系统 ...\n");
-	system("umount " MOUNT_POINT);
+	sh("umount " MOUNT_POINT);
 	rmdir(MOUNT_POINT);
 	printf("  [PASS] 卸载成功\n");
 

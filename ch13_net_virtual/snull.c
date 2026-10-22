@@ -110,6 +110,11 @@ static struct snull_packet *snull_get_tx_buffer(struct net_device *dev)
 
 	spin_lock_irqsave(&priv->lock, flags);
 	pkt = priv->ppool;
+	if (!pkt) {
+		netif_stop_queue(dev);
+		spin_unlock_irqrestore(&priv->lock, flags);
+		return NULL;
+	}
 	priv->ppool = pkt->next;
 	if (priv->ppool == NULL) {
 		pr_info("snull: packet pool empty, stopping tx queue on %s\n",
@@ -293,25 +298,26 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
 	statusword = priv->status;
 	priv->status = 0;
 
-	if (statusword & SNULL_RX_INTR) {
-		pkt = priv->rx_queue;
-		if (pkt) {
-			priv->rx_queue = pkt->next;
-			snull_rx(dev, pkt);
-		}
-	}
-
 	if (statusword & SNULL_TX_INTR) {
 		priv->stats.tx_packets++;
 		priv->stats.tx_bytes += priv->tx_packetlen;
 		dev_kfree_skb(priv->skb);
+		priv->skb = NULL;
 	}
 
 	spin_unlock(&priv->lock);
 
-	/* Release the buffer outside the spinlock to avoid lock ordering issues */
-	if (pkt)
-		snull_release_buffer(pkt);
+	/*
+	 * snull_dequeue_buf() 自己拿锁。这里不能在持锁时调用它。
+	 * 取到的包在锁外上送，再把缓冲还回池子。
+	 */
+	if (statusword & SNULL_RX_INTR) {
+		pkt = snull_dequeue_buf(dev);
+		if (pkt) {
+			snull_rx(dev, pkt);
+			snull_release_buffer(pkt);
+		}
+	}
 }
 
 /*
@@ -329,7 +335,7 @@ static void snull_regular_interrupt(int irq, void *dev_id, struct pt_regs *regs)
  * 将包入队到对端设备的 rx_queue，然后直接调用 snull_interrupt()。
  * 真实网卡驱动中，这里应该是 DMA 完成后硬件自动触发中断。
  */
-static void snull_hw_tx(char *buf, int len, struct net_device *dev)
+static int snull_hw_tx(char *buf, int len, struct net_device *dev)
 {
 	struct iphdr *ih;
 	struct net_device *dest;
@@ -339,7 +345,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
 
 	if (len < sizeof(struct ethhdr) + sizeof(struct iphdr)) {
 		pr_warn("snull: packet too short (%d octets)\n", len);
-		return;
+		return -EINVAL;
 	}
 
 	/*
@@ -364,6 +370,11 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
 	/* Simulate RX on the destination side */
 	priv = netdev_priv(dest);
 	tx_buffer = snull_get_tx_buffer(dev);
+	if (!tx_buffer) {
+		pr_notice("snull: %s packet pool empty, dropping packet\n",
+			  dev->name);
+		return -ENOBUFS;
+	}
 	tx_buffer->datalen = len;
 	memcpy(tx_buffer->data, buf, len);
 	snull_enqueue_buf(dest, tx_buffer);
@@ -379,6 +390,7 @@ static void snull_hw_tx(char *buf, int len, struct net_device *dev)
 	priv->tx_packetdata = buf;
 	priv->status |= SNULL_TX_INTR;
 	snull_interrupt(0, dev, NULL);
+	return 0;
 }
 
 static int snull_tx(struct sk_buff *skb, struct net_device *dev)
@@ -399,9 +411,13 @@ static int snull_tx(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	priv->skb = skb;
-	snull_hw_tx(data, len, dev);
+	if (snull_hw_tx(data, len, dev)) {
+		priv->skb = NULL;
+		priv->stats.tx_dropped++;
+		dev_kfree_skb(skb);
+	}
 
-	return 0;
+	return NETDEV_TX_OK;
 }
 
 static struct net_device_stats *snull_stats(struct net_device *dev)

@@ -15,6 +15,15 @@
 #include <string.h>
 #include <unistd.h>
 
+
+static void sh(const char *cmd)
+{
+	int status = system(cmd);
+
+	(void)status;
+}
+
+
 #define MODULE_NAME "dma_demo"
 
 static int check_dmesg(const char *keyword)
@@ -31,7 +40,7 @@ int main(void)
 	printf("=== Ch12 DMA 用户态测试程序 ===\n\n");
 
 	/* 清理残留 */
-	system("rmmod " MODULE_NAME " 2>/dev/null");
+	sh("rmmod " MODULE_NAME " 2>/dev/null");
 
 	/* STEP 1: 加载模块 */
 	printf("[STEP 1] 加载 %s.ko ...\n", MODULE_NAME);

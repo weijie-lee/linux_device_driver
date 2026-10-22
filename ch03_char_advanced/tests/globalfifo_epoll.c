@@ -4,11 +4,12 @@
 #include <sys/ioctl.h>		/* for ioctl */
 #include <sys/epoll.h>
 #include <string.h>
+#include <unistd.h>
 
 
 #define FIFO_CLEAR 0X1
 
-void main(void)
+int main(void)
 {
 	int fd;
 
@@ -22,10 +23,10 @@ void main(void)
 		epfd = epoll_create(1);
 		if (epfd < 0) {
 			printf("epoll_create() fail\n");
-			return;
+			return 1;
 		}
 
-		bzero(&ev_globalfifo, sizeof(struct epoll_event));
+		memset(&ev_globalfifo, 0, sizeof(ev_globalfifo));
 
 		/* 设置侦听读事件 */
 		ev_globalfifo.events = EPOLLIN | EPOLLPRI;
@@ -34,14 +35,14 @@ void main(void)
 		err = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev_globalfifo);
 		if (err < 0) {
 			printf("epoll_ctl() EPOLL_CTL_ADD fail.\n");
-			return;
+			return 1;
 		}
 
 		/* 进行等待，若15秒没有写入设备，则打印 */
 		err = epoll_wait(epfd, &ev_globalfifo, 1, 15000);
 		if (err < 0) {
 			printf("epoll_wait() fail\n");
-			return;
+			return 1;
 		} else if(err == 0){
 			printf("No data input in fifo within 15 seconds\n");
 		} else {
@@ -55,4 +56,5 @@ void main(void)
 	} else {
 		printf("fail to open device.\n");
 	}
+	return 0;
 }

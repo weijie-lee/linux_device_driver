@@ -32,7 +32,7 @@ static int find_virt_rtc(char *path, size_t len)
 {
 	DIR *dir = opendir("/sys/class/rtc");
 	struct dirent *ent;
-	char name_path[256], name[64];
+	char name_path[320], name[64];
 	FILE *f;
 
 	if (!dir) return -1;
@@ -43,7 +43,10 @@ static int find_virt_rtc(char *path, size_t len)
 		f = fopen(name_path, "r");
 		if (!f) continue;
 		memset(name, 0, sizeof(name));
-		fgets(name, sizeof(name), f);
+		if (!fgets(name, sizeof(name), f)) {
+			fclose(f);
+			continue;
+		}
 		fclose(f);
 		name[strcspn(name, "\n")] = '\0';
 		if (strstr(name, "virt_rtc") || strstr(name, "virtual")) {
@@ -60,7 +63,7 @@ static int find_virt_rtc(char *path, size_t len)
 
 int main(void)
 {
-	char device[64];
+	char device[320];
 	int fd, ret;
 	struct rtc_time tm_set, tm_read;
 	struct rtc_wkalrm alrm;

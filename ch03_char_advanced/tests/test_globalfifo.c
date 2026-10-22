@@ -74,7 +74,11 @@ int main(void)
 
 	/* TC04: 写入数据后 poll 可读检测 */
 	printf("[TC04] poll readable after write\n");
-	write(fd, wbuf, strlen(wbuf));
+	n = write(fd, wbuf, strlen(wbuf));
+	if (n != (ssize_t)strlen(wbuf)) {
+		printf("  [FAIL] second write of fifo data\n");
+		fail_count++;
+	}
 	FD_ZERO(&rfds);
 	FD_SET(fd, &rfds);
 	tv.tv_sec = 1; tv.tv_usec = 0;

@@ -16,8 +16,8 @@
 
 | 套件 | 脚本 | 判据 | 结果 |
 |------|------|------|------|
-| 冒烟套件 | `qemu_test/init.sh` | 每个模块能 `insmod`，设备节点、sysfs 或网卡出现；`rmmod` 失败不算失败。`learn/` 与 `hardcode/` 做功能检查。`kernel/01` 核对绑定顺序。`kernel/02` 核对 ftrace 里的绑定路径和 `chrdev_open` / `vfs_read`，并确认 `rmmod` 之后模块已卸下 | **80 / 80 通过** |
-| 章节实验 | `qemu_test/lab.sh` | 每章打印命令和回显。`rmmod` 失败、期望字样缺失、设备节点不是字符设备或块设备都算失败。`ch02`、`ch03`、`ch05`、`ch06`、`ch08` 另外运行 `tests/` 里的用户态程序，要求 `FAIL: 0`。`kernel01` 要求 trace 整行一致。`kernel02` 要求 ftrace 函数顺序一致 | **78 / 78 通过** |
+| 冒烟套件 | `qemu_test/init.sh` | 每个模块能 `insmod`，设备节点、sysfs 或网卡出现；`rmmod` 失败不算失败。`learn/` 与 `hardcode/` 做功能检查。`kernel/01` 核对绑定顺序。`kernel/02` 核对 ftrace 里的绑定路径和 `chrdev_open` / `vfs_read`。`kernel/03` 核对 `vfs_write` → `_copy_from_user` 和 `vfs_read` → `_copy_to_user`，并确认读回的字节与写入的相同 | **81 / 81 通过** |
+| 章节实验 | `qemu_test/lab.sh` | 每章打印命令和回显。`rmmod` 失败、期望字样缺失、设备节点不是字符设备或块设备都算失败。`ch02`、`ch03`、`ch05`、`ch06`、`ch08` 另外运行 `tests/` 里的用户态程序，要求 `FAIL: 0`。`kernel01` 要求 trace 整行一致。`kernel02` 和 `kernel03` 要求 ftrace 函数顺序一致 | **79 / 79 通过** |
 
 每一章的命令、回显和成功判据在各章 README 的「在镜像里复现」。回显是镜像里一次真实运行的记录。
 
