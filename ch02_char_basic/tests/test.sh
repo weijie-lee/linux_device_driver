@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 DRIVER="globalmem"
-DEVICE="/dev/globalmem"
+DEVICE="/dev/global_mem_0"
 echo "=== Ch02 Globalmem Character Device Test ==="
 lsmod | grep -q "${DRIVER}" && rmmod "${DRIVER}" 2>/dev/null || true
 echo "[STEP 1] Building..."

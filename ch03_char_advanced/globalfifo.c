@@ -19,7 +19,8 @@
  *
  * 4. platform_driver 注册：
  *    - 使用 platform_driver 框架，模拟嵌入式设备的总线驱动模式
- *    - probe/remove 回调替代传统的 module_init/module_exit
+ *    - module_init 先注册同名 platform_device，再用 platform_driver_probe() 跑 probe，
+ *      字符设备和 /dev 节点在 probe 里创建
  *
  * 【等待队列竞态条件修复说明】
  * 原始代码在释放 mutex 后才调用 __set_current_state(TASK_INTERRUPTIBLE)，
@@ -32,6 +33,7 @@
  *   - 修复 remove 中 device_destroy/class_destroy 顺序
  *   - 修复 probe 中 alloc_chrdev_region 失败后缺少 return
  *   - 删除冗余调试 printk
+ *   - 补上缺失的 platform_device，否则 probe 不会运行，设备节点不会出现
  */
 
 #include <linux/module.h>
@@ -465,11 +467,40 @@ static struct platform_driver global_mem_driver = {
 		.name = "globalfifo",
 		.owner = THIS_MODULE,
 	},
-	.probe  = global_mem_probe,
 	.remove = global_mem_remove,
 };
 
-module_platform_driver(global_mem_driver);
+static struct platform_device *globalfifo_pdev;
+
+/*
+ * 没有设备树和 ACPI 时没人会创建名为 "globalfifo" 的 platform_device，
+ * probe 不会被调用，/dev/global_mem_* 也就不会出现。
+ * 这里先注册设备，再用 platform_driver_probe() 同步地跑一次 probe，
+ * probe 失败时 insmod 会返回错误。
+ */
+static int __init global_mem_init(void)
+{
+	int ret;
+
+	globalfifo_pdev = platform_device_register_simple("globalfifo", -1,
+							  NULL, 0);
+	if (IS_ERR(globalfifo_pdev))
+		return PTR_ERR(globalfifo_pdev);
+
+	ret = platform_driver_probe(&global_mem_driver, global_mem_probe);
+	if (ret)
+		platform_device_unregister(globalfifo_pdev);
+	return ret;
+}
+
+static void __exit global_mem_exit(void)
+{
+	platform_driver_unregister(&global_mem_driver);
+	platform_device_unregister(globalfifo_pdev);
+}
+
+module_init(global_mem_init);
+module_exit(global_mem_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("liweijie");
