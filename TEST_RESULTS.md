@@ -4,42 +4,24 @@
 
 | 项目 | 详情 |
 |------|------|
-| 宿主机 OS | Ubuntu 22.04.5 LTS (x86_64) |
-| 宿主机内核 | 6.1.102 |
-| 编译内核头文件 | linux-headers-5.15.0-173-generic |
-| 编译器 | GCC 11.4.0 |
-| 构建系统 | GNU Make 4.3 + Kbuild |
-| QEMU 版本 | qemu-system-x86_64 (QEMU emulator) |
-| 测试内核 | Linux 5.15.0-173-generic |
-| 测试架构 | x86_64 |
-| 测试时间 | 2026-10-21（最近一次）；下表中的 19 项明细来自 2026-03-24 |
+| 运行方式 | `docker run --rm ldd-lab test` 与 `docker run --rm ldd-lab chapter all` |
+| 镜像 | Ubuntu 22.04，GCC 11.4.0，`linux-headers-5.15.0-173-generic` |
+| 测试内核 | Linux 5.15.0-173-generic（x86_64，QEMU 6.2.0，无 KVM 时用 TCG） |
+| 持续集成 | `.github/workflows/docker-validation.yml`，推送到 `master` 和每个 PR 都会运行 |
+| 最近一次 | 2026-10-22 |
+
+容器里的 `uname -r` 是宿主机内核。模块只在 QEMU 客户机里 `insmod`。
 
 ## 测试结果汇总
 
-**2026-10-21：78 项测试，78 项通过，0 项失败。** 客户机内核 `5.15.0-173-generic`。70 项仍是 ch01–ch68 的加载检查。另外 8 项来自 `learn/`：`uapi_test`（read/write、ioctl、poll、mmap、sysfs、debugfs）、设备树资源读回（threshold 40、id `4c444454`、irq 19）、中断三阶段计数、传感器的 24 MHz 时钟和温度 37、runtime PM 的 suspended/active，以及 dyndbg 和 ftrace。ftrace 要先切到 function tracer，再写 `set_ftrace_filter`。
+| 套件 | 脚本 | 判据 | 结果 |
+|------|------|------|------|
+| 冒烟套件 | `qemu_test/init.sh` | 每个模块能 `insmod`，设备节点、sysfs 或网卡出现；`rmmod` 失败不算失败。`learn/` 与 `hardcode/` 做功能检查 | **78 / 78 通过** |
+| 章节实验 | `qemu_test/lab.sh` | 每章打印命令和回显。`rmmod` 失败、期望字样缺失、设备节点不是字符设备或块设备都算失败。`ch02`、`ch03`、`ch05`、`ch06`、`ch08` 另外运行 `tests/` 里的用户态程序，要求 `FAIL: 0` | **76 / 76 通过** |
 
-下面是 2026-03-24 对当时 19 个模块的明细。ch19–ch68 的通过记录在 `qemu_test/output/test_summary.txt` 的同一次 70 项运行里。
+每一章的命令、回显和成功判据在各章 README 的「在镜像里复现」。回显是镜像里一次真实运行的记录。
 
-| 章节 | 驱动名称 | 测试项 | 结果 | 验证内容 |
-|------|---------|--------|------|---------|
-| Ch01 | kfifo_demo_static | ch01_kfifo insmod+rmmod | **PASS** | 内核 kfifo 数据结构，insmod/rmmod 成功 |
-| Ch02 | globalmem | ch02_globalmem insmod | **PASS** | 全局内存字符设备，insmod 成功 |
-| Ch03 | globalfifo | ch03_globalfifo insmod | **PASS** | 全局 FIFO 字符设备，insmod 成功 |
-| Ch04 | second | ch04_second dev=/dev/second | **PASS** | 内核定时器，/dev/second 设备节点创建成功 |
-| Ch05 | misc_demo | ch05_misc dev=/dev/misc_demo | **PASS** | Misc 设备框架，/dev/misc_demo 创建成功 |
-| Ch06 | platform_demo | ch06_platform sysfs | **PASS** | Platform 总线驱动，sysfs 条目创建成功 |
-| Ch07 | input_demo | ch07_input event_dev | **PASS** | Input 子系统，/dev/input/eventX 创建成功 |
-| Ch08 | regmap_demo | ch08_regmap insmod | **PASS** | Regmap 抽象层，insmod 成功 |
-| Ch09 | watchdog_demo | ch09_watchdog dev | **PASS** | 看门狗框架，/dev/watchdog 设备创建成功 |
-| Ch10 | rtc_demo | ch10_rtc dev | **PASS** | RTC 实时时钟，/dev/rtc 设备创建成功 |
-| Ch11 | pwm_demo | ch11_pwm sysfs | **PASS** | PWM 子系统，/sys/class/pwm 条目创建成功 |
-| Ch12 | dma_demo | ch12_dma insmod | **PASS** | DMA 内存管理，insmod 成功 |
-| Ch13 | snull | ch13_snull netdev | **PASS** | 虚拟网络设备，网络接口注册成功 |
-| Ch14 | eth_mac | ch14_eth_mac netdev | **PASS** | MAC+PHY 以太网，网络接口注册成功 |
-| Ch15 | i2c_master + i2c_slave | ch15_i2c slave_dev | **PASS** | I2C 总线，/dev/i2c_virt 设备创建成功 |
-| Ch16 | spi_master + spi_slave | ch16_spi slave_dev | **PASS** | SPI 总线，/dev/spi_virt 设备创建成功 |
-| Ch17 | vmem_disk | ch17_vmem_disk dev | **PASS** | 块设备（blk-mq），/dev/vmem_disk 创建成功 |
-| Ch18 | mmc_virt | ch18_mmc host | **PASS** | MMC/eMMC 虚拟主控，mmc_host 注册成功 |
+`ch21`–`ch68` 多数只验证模块加载后 probe 建出自己的节点并能卸载，没有逐个驱动做读写。`ch15`、`ch16`、`ch17` 的 `tests/` 程序自己 `insmod` 当前目录的 `.ko`，不能直接对已加载的模块运行，所以实验只检查节点和回显。
 
 ## 测试过程中发现并修复的 Bug
 
@@ -63,57 +45,31 @@
 
 **修复方案：** 在 `mmc_virt_init` 中先创建一个虚拟 `platform_device` 作为 parent device，然后将其 `&pdev->dev` 传给 `mmc_alloc_host`，并在 `mmc_virt_exit` 中同步卸载该 `platform_device`。
 
-## QEMU 测试日志摘录
+### Bug 3：Ch03 globalfifo — 没有 platform_device，设备节点从不出现
 
-```
-============================================
- Linux Driver Module Test Suite
- Kernel: 5.15.0-173-generic
-============================================
---- Ch01: kfifo ---
-[PASS] ch01_kfifo insmod+rmmod
---- Ch02: globalmem ---
-[PASS] ch02_globalmem insmod
---- Ch03: globalfifo ---
-[PASS] ch03_globalfifo insmod
---- Ch04: second ---
-[PASS] ch04_second dev=/dev/second
---- Ch05: misc ---
-[PASS] ch05_misc dev=/dev/misc_demo
---- Ch06: platform ---
-[PASS] ch06_platform sysfs
---- Ch07: input ---
-[PASS] ch07_input event_dev
---- Ch08: regmap ---
-[PASS] ch08_regmap insmod
---- Ch09: watchdog ---
-[PASS] ch09_watchdog dev
---- Ch10: rtc ---
-[PASS] ch10_rtc dev
---- Ch11: pwm ---
-[PASS] ch11_pwm sysfs
---- Ch12: dma ---
-[PASS] ch12_dma insmod
---- Ch13: snull ---
-[PASS] ch13_snull netdev
---- Ch14: eth_mac ---
-[PASS] ch14_eth_mac netdev
---- Ch15: i2c ---
-[PASS] ch15_i2c slave_dev
---- Ch16: spi ---
-[PASS] ch16_spi slave_dev
---- Ch17: vmem_disk ---
-[PASS] ch17_vmem_disk dev
-[PASS] ch17_vmem_disk sysfs
---- Ch18: mmc ---
-[PASS] ch18_mmc host
+**症状：** `insmod globalfifo.ko` 成功，`lsmod` 能看到模块，但 `/dev/global_mem_0` 不存在。早先的检查里 `echo fifo_test > /dev/global_mem_0` 在 devtmpfs 里建出了一个普通文件，`head` 又把它读了回来，所以实验显示通过。
 
-============================================
- TEST RESULTS SUMMARY
-============================================
- PASS: 19
- FAIL: 0
- TOTAL: 19
-============================================
-QEMU_TEST_DONE
-```
+**根本原因：** 驱动是 `module_platform_driver`，节点在 `probe` 里创建，而没有人注册名为 `globalfifo` 的 `platform_device`，`probe` 从未运行。`tests/test_globalfifo.c` 里的 `/dev/globalfifo` 和 `FIFO_CLEAR 0x1` 也与驱动不符。
+
+**修复方案：** `module_init` 里先 `platform_device_register_simple("globalfifo")`，再 `platform_driver_probe()`。实验增加 `test -c`，并且 `want` 不再把 `ls` 的 `No such file` 当成功依据。用户态测试改用 `/dev/global_mem_0` 和 `_IO('g', 0)`。
+
+### Bug 4：Ch08 regmap_demo — 平坦缓存把初始寄存器值盖成 0
+
+**症状：** 读寄存器 5 得到 `0x0`，驱动注释写的是 `N * 0x10`。
+
+**根本原因：** `REGCACHE_FLAT` 没有 `reg_defaults` 时缓存数组全是 0，第一次读命中缓存，不会走 `reg_read`。
+
+**修复方案：** 为 256 个寄存器提供 `reg_defaults`，`regmap_init` 复制后释放临时表。
+
+### Bug 5：learn/01 virt_uapi — `rmmod` 时 `misc_deregister` 内核 oops
+
+**根本原因：** `dev_set_drvdata(misc.this_device, p)` 覆盖了 misc 核心放在 `drvdata` 里的 `miscdevice` 指针，`misc_devnode` 把 `virt_uapi` 的字段当成节点名。
+
+**修复方案：** 不设 `drvdata`，`bytes_show` 直接用全局指针。
+
+### Bug 6：learn/04 virt_sensor — `rmmod` 返回 EAGAIN
+
+**根本原因：** 驱动自己是时钟的提供者，又 `clk_get` 持有它，模块引用计数被钉住，`exit` 不会运行。冒烟套件的 `rmmod` 失败不算失败，长期没发现。
+
+**修复方案：** 读完频率后 `clk_disable_unprepare` + `clk_put`。
+

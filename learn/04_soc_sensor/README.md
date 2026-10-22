@@ -1,5 +1,7 @@
 # 把 regmap、时钟和中断放进同一次 probe
 
+## 代码知识点
+
 前面几章各自注册一个虚拟设备。真实的 SoC 驱动在一次 `probe` 里把它们接上：
 
 1. `devm_regmap_init` 读写 ID、CTRL、TEMP、THRESHOLD。
@@ -16,6 +18,23 @@ cat /sys/devices/platform/virt_sensor/irq_count      # 至少 1
 cat /sys/devices/platform/virt_sensor/last_temp      # handler 读到的 37
 ```
 
+## 代码架构
+
+```
+probe
+  devm_regmap_init                        ID、CTRL、TEMP、THRESHOLD 四个寄存器
+  devm_clk_hw_register_fixed_rate         24 MHz
+  devm_clk_hw_register_clkdev("sensor")   登记连接名
+  clk_get → clk_prepare_enable → clk_get_rate → clk_disable_unprepare → clk_put
+  irq_domain_add_linear → irq_create_mapping → request_threaded_irq
+  regmap_write(ID)、regmap_write(CTRL)
+  device_create_file                      temperature、clock_hz、irq_count、last_temp
+写 temperature
+  regmap_write(TEMP) → irq_work → 硬中断 sensor_hard → 线程 sensor_thread → regmap_read
+remove
+  irq_work_sync → free_irq → irq_dispose_mapping → irq_domain_remove
+```
+
 ## 在镜像里复现
 
 模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
@@ -25,7 +44,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter learn04
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/learn_04_soc_sensor_virt_sensor.ko

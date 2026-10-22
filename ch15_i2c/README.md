@@ -30,7 +30,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch15
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch15_i2c_i2c_master.ko
@@ -39,17 +39,19 @@ insmod ok
 insmod ok
 + ls /dev/i2c_virt
 /dev/i2c_virt
++ test -c /dev/i2c_virt -o -b /dev/i2c_virt
+node ok
 + dmesg | grep i2c_virt
-[    4.975742] i2c_virt_master: registered as i2c-0, virtual slave at 0x50
-[    4.982274] i2c_virt_slave 0-0050: device ID register (0x00) = 0x50
-[    4.982314] i2c_virt_slave 0-0050: I2C slave probed at addr 0x50 on adapter i2c-virt-master, /dev/i2c_virt created
-[    4.982659] i2c_virt_slave: module loaded, /dev/i2c_virt ready
+[    5.085884] i2c_virt_master: registered as i2c-0, virtual slave at 0x50
+[    5.092267] i2c_virt_slave 0-0050: device ID register (0x00) = 0x50
+[    5.092302] i2c_virt_slave 0-0050: I2C slave probed at addr 0x50 on adapter i2c-virt-master, /dev/i2c_virt created
+[    5.092804] i2c_virt_slave: module loaded, /dev/i2c_virt ready
 + echo ab > /dev/i2c_virt
 + dmesg | grep i2c_virt_slave
-[    4.982274] i2c_virt_slave 0-0050: device ID register (0x00) = 0x50
-[    4.982314] i2c_virt_slave 0-0050: I2C slave probed at addr 0x50 on adapter i2c-virt-master, /dev/i2c_virt created
-[    4.982659] i2c_virt_slave: module loaded, /dev/i2c_virt ready
-[    5.011232] i2c_virt_slave: wrote 2 byte(s) starting at reg 0x61
+[    5.092267] i2c_virt_slave 0-0050: device ID register (0x00) = 0x50
+[    5.092302] i2c_virt_slave 0-0050: I2C slave probed at addr 0x50 on adapter i2c-virt-master, /dev/i2c_virt created
+[    5.092804] i2c_virt_slave: module loaded, /dev/i2c_virt ready
+[    5.121547] i2c_virt_slave: wrote 2 byte(s) starting at reg 0x61
 + rmmod i2c_slave
 rmmod ok
 + rmmod i2c_master
@@ -61,7 +63,7 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch15_i2c`
-- `/dev/i2c_virt` 存在，dmesg 有 `registered as i2c-`，写入之后有 `wrote`。
+- `/dev/i2c_virt` 存在且 `node ok`，dmesg 有 `registered as i2c-`，写入之后有 `wrote`。
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 

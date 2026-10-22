@@ -15,7 +15,7 @@
 
 顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/` 和 `learn/` 的 7 个模块。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
 
-客户机内核是 Ubuntu `5.15.0-173-generic`。最近一次 QEMU 运行是 **78 项通过、0 项失败**，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。
+客户机内核是 Ubuntu `5.15.0-173-generic`。QEMU 里有两套检查：冒烟套件 **78 项**，章节实验 **76 项**，最近一次都是 0 项失败，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。GitHub Actions 每次推送和 PR 都会跑这两套。
 
 ## 读之前要知道的三件事
 
@@ -151,11 +151,11 @@ linux_device_driver/
 | 章节 | 看什么 | 做完能确认什么 |
 | --- | --- | --- |
 | `ch01_kernel_basics` | `container_of`、侵入式 `list_head`、`kfifo`。节点嵌在业务结构体里，遍历得到的是节点指针，再用偏移找回对象 | `kfifo_demo_static.ko` 能加载卸载 |
-| `ch02_char_basic` | `alloc_chrdev_region`、`cdev`、`file_operations`、`copy_to_user` / `copy_from_user`、mutex。`globalmem` 是一块 4KB 内存 | 对 `/dev/globalmem*` 写入后再读回 |
-| `ch03_char_advanced` | FIFO 空则读者睡在等待队列上，有数据则 `wake_up`；`.poll` 里先 `poll_wait`；`fasync` 发 `SIGIO`；`MEM_CLEAR` 这个 ioctl 清空缓冲 | 对 `/dev/globalfifo*` 写入成功 |
-| `ch04_timer` | `timer_list` 到期后在软中断里跑，回调里 `mod_timer()` 安排下一秒。读设备节点得到计数值 | `/dev/second*` 出现 |
-| `ch05_misc` | `misc_register` 使用固定主设备号 10，自动创建设备节点，适合只需要一个次设备号的小设备 | `/dev/misc_demo*` 出现 |
-| `ch06_platform` | `platform_device` 描述资源，`platform_driver.probe` 在名字匹配后被调用。本章在 `module_init` 里自己注册设备，用来看绑定过程 | `/sys/bus/platform/devices/` 里出现该设备 |
+| `ch02_char_basic` | `alloc_chrdev_region`、`cdev`、`file_operations`、`copy_to_user` / `copy_from_user`、mutex。`globalmem` 是一块 4KB 内存 | `/dev/global_mem_0` 写入后读回 `test_data`，用户态 `test_globalmem` 8 项全过 |
+| `ch03_char_advanced` | FIFO 空则读者睡在等待队列上，有数据则 `wake_up`；`.poll` 里先 `poll_wait`；`fasync` 发 `SIGIO`；`MEM_CLEAR` 这个 ioctl 清空缓冲 | `/dev/global_mem_0` 写入后读回 `fifo_test`，用户态 `test_globalfifo` 9 项全过（非阻塞 `EAGAIN`、`poll`、`MEM_CLEAR`） |
+| `ch04_timer` | `timer_list` 到期后在软中断里跑，回调里 `mod_timer()` 安排下一秒。读设备节点得到计数值 | 打开 `/dev/second` 两秒后读到的秒数不小于 1 |
+| `ch05_misc` | `misc_register` 使用固定主设备号 10，自动创建设备节点，适合只需要一个次设备号的小设备 | `/dev/misc_demo` 读回 `miscdata`，用户态 `test_misc` 8 项全过 |
+| `ch06_platform` | `platform_device` 描述资源，`platform_driver.probe` 在名字匹配后被调用。本章在 `module_init` 里自己注册设备，用来看绑定过程 | `/dev/virt_plat` 读回 `hi`，用户态 `test_platform` 4 项全过 |
 
 `copy_to_user` 可能睡眠，所以放在 mutex 里，不放在自旋锁里。这个约束到 `learn/01_uapi` 和 `learn/03_irq` 仍然成立。
 

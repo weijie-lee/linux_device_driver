@@ -1,5 +1,7 @@
 # 用户接口：read/write、ioctl、poll、mmap、sysfs、debugfs
 
+## 代码知识点
+
 `ch02` 只有 read/write。一块设备通常还要决定控制命令、等待数据和共享内存走哪条接口。本模块把这些都放在 `/dev/virt_uapi` 上，缓冲区是一页内存。
 
 | 接口 | 什么时候用 | 本模块 |
@@ -23,6 +25,23 @@ insmod virt_uapi.ko
 
 `copy_to_user` / `copy_from_user` 可能睡眠，所以不在自旋锁里调用。这里用 mutex。`poll` 先 `poll_wait` 再看 `len`，避免数据和等待队列之间的丢失唤醒。
 
+## 代码架构
+
+```
+insmod virt_uapi.ko
+  alloc_page                              一页缓冲，长度记在 len
+  misc_register("virt_uapi")              /dev/virt_uapi
+  device_create_file(bytes)               /sys/class/misc/virt_uapi/bytes
+  debugfs_create_dir + debugfs_create_u32 /sys/kernel/debug/virt_uapi/flags
+uapi_test（静态链接的用户程序）
+  write / read   mutex 里 copy_from_user / copy_to_user
+  ioctl          VIRT_UAPI_GET_LEN、VIRT_UAPI_CLEAR
+  poll           poll_wait，len > 0 时返回 POLLIN
+  mmap           remap_pfn_range 映射同一页
+rmmod virt_uapi
+  debugfs_remove_recursive → misc_deregister → __free_page → kfree
+```
+
 ## 在镜像里复现
 
 模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
@@ -32,7 +51,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter learn01
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/learn_01_uapi_virt_uapi.ko

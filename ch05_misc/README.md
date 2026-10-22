@@ -26,16 +26,39 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch05
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch05_misc_misc_demo.ko
 insmod ok
 + ls /dev/misc_demo
 /dev/misc_demo
++ test -c /dev/misc_demo -o -b /dev/misc_demo
+node ok
 + echo miscdata > /dev/misc_demo
 + head -c 8 /dev/misc_demo
 miscdata
++ /bin/test_misc
+=== Ch05 Misc Device Driver Test ===
+
+[TC01] open/close
+  [PASS] open /dev/misc_demo
+[TC02] write
+  [PASS] write returns correct byte count
+[TC03] read
+  [PASS] read returns same byte count as written
+  [PASS] read data matches written data
+[TC04] ioctl MISC_GET_LEN
+  [PASS] ioctl MISC_GET_LEN returns 0
+  [PASS] MISC_GET_LEN returns correct length
+  data_len = 19 (expected 19)
+[TC05] ioctl MISC_CLEAR
+  [PASS] ioctl MISC_CLEAR returns 0
+[TC06] read after clear
+  [PASS] read after clear returns 0 (EOF)
+
+=== Test Summary ===
+PASS: 8  FAIL: 0
 + rmmod misc_demo
 rmmod ok
 [PASS] ch05_misc
@@ -45,7 +68,8 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch05_misc`
-- `head` 读回 `miscdata`，并且 `/dev/misc_demo` 存在。
+- `node ok`，`head` 读回 `miscdata`
+- 用户态程序 `test_misc` 的结尾是 `PASS: 8  FAIL: 0`。
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 

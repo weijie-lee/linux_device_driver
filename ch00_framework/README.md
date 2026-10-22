@@ -4,6 +4,23 @@
 
 ---
 
+## 代码知识点
+
+这一章讲的是后面每个驱动都会套用的骨架。`driver_template.c` 是字符设备的最小实现，用到的知识点是：设备号（`alloc_chrdev_region`）、`cdev` 与 `file_operations`、`class_create` + `device_create` 自动出节点、`copy_to_user` / `copy_from_user`、保护私有数据的 mutex、等待队列和 `poll`。总览里的其余几节（platform、总线—设备—驱动、网络、块设备、中断、内存、模块生命周期、调试）都以它为参照。
+
+## 代码架构
+
+```
+module_init
+  alloc_chrdev_region → kzalloc(priv) → mutex_init
+  cdev_init + cdev_add
+  class_create → device_create          /dev/<name>
+file_operations
+  open / release / read / write / poll / unlocked_ioctl
+module_exit
+  device_destroy → class_destroy → cdev_del → kfree → unregister_chrdev_region
+```
+
 ## 在镜像里复现
 
 这一章没有 `.ko`。`driver_template.c` 是一份字符设备骨架，不参与 `make all`。镜像里用下面的命令核对骨架还在，并且五步注册都写在文件里。

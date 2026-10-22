@@ -1,5 +1,7 @@
 # 中断和并发
 
+## 代码知识点
+
 客户机没有多余的硬件中断线。本模块注册一个只有一个 hwirq 的 `irq_domain`，写 `kick` 时用 `IRQ_WORK_HARD` 在硬中断上下文调用 `generic_handle_domain_irq()`。
 
 三条路径：
@@ -23,6 +25,23 @@ echo 1 > /sys/devices/platform/virt_irq/kick
 cat /sys/devices/platform/virt_irq/counts
 ```
 
+## 代码架构
+
+```
+probe
+  INIT_WORK(virt_work_fn)
+  irq_domain_add_linear(1 个 hwirq) → irq_create_mapping
+  request_threaded_irq(virt_irq_hard, virt_irq_thread)
+echo 1 > kick
+  irq_work_queue                              IRQ_WORK_HARD，在硬中断上下文里
+    generic_handle_domain_irq
+      virt_irq_hard    spinlock，hard_count++，IRQ_WAKE_THREAD
+      virt_irq_thread  mutex，thread_count++，schedule_work
+        virt_work_fn   mutex，work_count++
+remove
+  irq_work_sync → free_irq → irq_dispose_mapping → irq_domain_remove
+```
+
 ## 在镜像里复现
 
 模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
@@ -32,7 +51,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter learn03
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/learn_03_irq_virt_irq.ko

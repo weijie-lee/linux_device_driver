@@ -26,14 +26,14 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch12
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch12_dma_dma_demo.ko
 insmod ok
 + dmesg | grep kmalloc
-[    4.729170] kmalloc virtual addr:0x(____ptrval____), pa:0x13291c0
-[    4.729353] kmalloc virtual addr:0x(____ptrval____), pa:0x13291c0
+[    4.803985] kmalloc virtual addr:0x(____ptrval____), pa:0x2ec0ef0
+[    4.804123] kmalloc virtual addr:0x(____ptrval____), pa:0x2ec0ef0
 + rmmod dma_demo
 rmmod ok
 [PASS] ch12_dma

@@ -2,96 +2,68 @@
 
 ## 章节概述
 
-本章介绍 高级字符设备驱动特性。涵盖的核心知识点包括：异步 I/O、内存映射、设备控制。
+`ch02` 的 `globalmem` 是一块可以随时读写的内存。本章把它改成 FIFO：缓冲区空时读者睡眠，满时写者睡眠，同时支持非阻塞、`poll`/`select`/`epoll` 和 `SIGIO` 异步通知。设备节点是 `/dev/global_mem_0` 到 `/dev/global_mem_3`，每个节点各有一个 4096 字节的缓冲区。
 
-## 知识点详解
+## 代码知识点
 
-### 1. 核心概念
+### 1. 阻塞读写与等待队列
 
-高级字符设备驱动特性是 Linux 驱动开发中的重要组成部分。本章通过实际代码示例，展示了如何使用 Linux 内核提供的相关 API 进行驱动开发。
+`struct global_mem_dev` 在 `ch02` 的基础上多了三项：`current_len`（缓冲区里的字节数）、`r_wait`（读等待队列）、`w_wait`（写等待队列）。
 
-**关键 API**：poll/select、mmap、unlocked_ioctl
+- 读：`current_len == 0` 时，非阻塞（`O_NONBLOCK`）返回 `-EAGAIN`，阻塞则把自己挂到 `r_wait`，`schedule()` 睡眠。
+- 写：`current_len == 4096` 时同理，挂在 `w_wait`。
+- 读到数据后 `wake_up_interruptible(&w_wait)`，写入数据后 `wake_up_interruptible(&r_wait)`。
 
-### 2. 架构设计
+睡眠前的顺序是关键：先 `__set_current_state(TASK_INTERRUPTIBLE)`，再 `mutex_unlock()`，最后 `schedule()`。如果先解锁，写者可能在解锁之后、`schedule()` 之前调用 `wake_up()`，读者那时还是 `TASK_RUNNING`，唤醒丢失，读者永远睡下去。状态先设好，`wake_up()` 会把它改回 `TASK_RUNNING`，`schedule()` 立刻返回。条件检查放在 `while` 里，被唤醒后重新判断。收到信号时返回 `-ERESTARTSYS`。
 
-本章的驱动采用标准的 Linux 驱动框架，遵循内核的设计规范。驱动的核心功能通过模块化的方式实现，便于理解和扩展。
+### 2. poll / select / epoll
 
-### 3. 实现细节
+`.poll` 里对 `r_wait` 和 `w_wait` 各调一次 `poll_wait()`，它只登记等待队列，不睡眠。随后根据 `current_len` 返回掩码：非空是 `POLLIN | POLLRDNORM`，未满是 `POLLOUT | POLLWRNORM`。真正的睡眠发生在内核的 `select`/`poll`/`epoll` 实现里。
 
-驱动实现了完整的初始化、操作和清理流程，包括：
-- 资源申请和初始化
-- 设备注册和绑定
-- 数据传输和控制
-- 错误处理和异常管理
-- 资源释放和清理
+### 3. fasync 与 SIGIO
 
+用户程序对文件描述符设置 `O_ASYNC`，内核调用 `.fasync`，驱动用 `fasync_helper()` 维护 `async_queue`。写入成功后 `kill_fasync(&async_queue, SIGIO, POLL_IN)` 通知所有登记的进程。`release` 里必须 `fasync_helper(-1, filp, 0)` 摘除，否则发信号时会访问已关闭的 `file`。
 
-## 架构图
+### 4. ioctl
 
-# Ch03 字符设备高阶 - 架构图
+`MEM_CLEAR` 是 `_IO('g', 0)`：加锁后把缓冲区清零，`current_len` 置 0。未知命令返回 `-EINVAL`。
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    应用程序 (User Space)                      │
-│  read() / write() / poll() / ioctl() / fcntl(O_ASYNC)        │
-└────────────────────┬────────────────────────────────────────┘
-                     │ 系统调用
-┌────────────────────▼────────────────────────────────────────┐
-│                  VFS 文件系统层                               │
-│         file_operations 函数指针表                           │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│              globalfifo 驱动层                               │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ struct global_mem_dev                               │  │
-│  │  - cdev: 字符设备结构体                              │  │
-│  │  - mem[4096]: FIFO 缓冲区                            │  │
-│  │  - current_len: 当前数据长度                         │  │
-│  │  - mutex: 互斥锁                                     │  │
-│  │  - r_wait: 读等待队列                                │  │
-│  │  - w_wait: 写等待队列                                │  │
-│  │  - async_queue: 异步通知链表                         │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                              │
-│  核心函数：                                                  │
-│  - open/release: 设备打开/关闭                              │
-│  - read: 从 FIFO 读取（支持阻塞）                           │
-│  - write: 向 FIFO 写入（支持阻塞）                          │
-│  - poll: 支持 select/epoll                                 │
-│  - ioctl: 设备控制命令                                      │
-│  - fasync: 异步通知注册                                     │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│                  内核调度器                                   │
-│         等待队列、进程状态管理、信号处理                      │
-└────────────────────────────────────────────────────────────┘
-```
+### 5. 为什么要在 init 里注册 platform_device
+
+驱动是 `platform_driver`，设备节点在 `probe` 里创建。`probe` 只有在总线上出现名字匹配的 `platform_device` 时才会被调用。没有设备树和 ACPI 时没有人创建它，所以 `module_init` 先 `platform_device_register_simple("globalfifo")`，再用 `platform_driver_probe()` 同步地跑一次 `probe`。少了这一步，`insmod` 成功，`lsmod` 能看到模块，但 `/dev/global_mem_*` 不会出现。
 
 ## 代码架构
 
-### 核心数据结构
+```
+应用程序   read / write / poll / ioctl / fcntl(O_ASYNC)
+              │
+VFS        file_operations
+              │
+globalfifo struct global_mem_dev × 4
+             ├─ cdev、mem[4096]、current_len、mutex
+             ├─ r_wait：读者在这里睡
+             ├─ w_wait：写者在这里睡
+             └─ async_queue：登记了 O_ASYNC 的进程
+              │
+内核       等待队列、进程状态、信号
+```
 
-驱动定义了必要的数据结构来管理设备状态和资源。这些结构体遵循 Linux 内核的设计模式，通常包含：
-- 设备控制结构体
-- 操作函数指针
-- 资源管理字段
-- 并发控制机制
-
-### 初始化流程
-
-1. **模块加载**：注册驱动程序
-2. **设备探测**：检测和初始化硬件
-3. **资源申请**：分配必要的内核资源
-4. **接口注册**：向用户空间或其他驱动暴露接口
-
-### 退出流程
-
-1. **接口注销**：撤销向外暴露的接口
-2. **资源释放**：释放所有申请的资源
-3. **驱动注销**：注销驱动程序
+```
+insmod globalfifo.ko
+  platform_device_register_simple("globalfifo")
+  platform_driver_probe → probe
+    alloc_chrdev_region → kzalloc → 4 × (mutex_init、init_waitqueue_head×2、cdev_init、cdev_add)
+    class_create → 4 × device_create        /dev/global_mem_0 .. 3
+read
+  空：O_NONBLOCK 返回 -EAGAIN，否则睡在 r_wait
+  有数据：copy_to_user → 剩余数据前移 → wake_up(w_wait)
+write
+  满：O_NONBLOCK 返回 -EAGAIN，否则睡在 w_wait
+  有空间：copy_from_user → wake_up(r_wait) → kill_fasync(SIGIO)
+rmmod globalfifo
+  platform_driver_unregister → remove：device_destroy → class_destroy → cdev_del → kfree → unregister_chrdev_region
+  platform_device_unregister
+```
 
 ## 在镜像里复现
 
@@ -102,16 +74,38 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch03
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch03_char_advanced_globalfifo.ko
 insmod ok
 + ls /dev/global_mem_0
-ls: /dev/global_mem_0: No such file or directory
+/dev/global_mem_0
++ test -c /dev/global_mem_0 -o -b /dev/global_mem_0
+node ok
 + echo fifo_test > /dev/global_mem_0
 + head -c 9 /dev/global_mem_0
 fifo_test
++ /bin/test_globalfifo
+=== Ch03 Globalfifo Character Device Test ===
+
+  [PASS] open /dev/global_mem_0 (blocking + nonblocking)
+[TC01] Basic read/write
+  [PASS] write returns correct byte count
+  [PASS] read returns correct byte count
+  [PASS] read data matches written data
+[TC02] Non-blocking read on empty FIFO
+  [PASS] non-blocking read on empty FIFO returns EAGAIN
+[TC03] poll writable
+  [PASS] poll reports writable when FIFO has space
+[TC04] poll readable after write
+  [PASS] poll reports readable after write
+[TC05] ioctl FIFO_CLEAR
+  [PASS] ioctl FIFO_CLEAR returns 0
+  [PASS] after clear, non-blocking read returns EAGAIN
+
+=== Test Summary ===
+PASS: 9  FAIL: 0
 + rmmod globalfifo
 rmmod ok
 [PASS] ch03_globalfifo
@@ -121,7 +115,9 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch03_globalfifo`
-- `head -c 9 /dev/global_mem_0` 是 `fifo_test`。读完就停，不要用 `cat`，空 FIFO 上的 `read` 会睡着。
+- `ls` 能列出 `/dev/global_mem_0`，并且 `node ok`。这个节点由 probe 创建，probe 要等到 `module_init` 注册了同名 `platform_device` 才会运行
+- `head -c 9 /dev/global_mem_0` 是 `fifo_test`。读完就停，不要用 `cat`，空 FIFO 上的 `read` 会睡着
+- 用户态程序 `test_globalfifo` 的结尾是 `PASS: 9  FAIL: 0`，其中包含非阻塞读空 FIFO 得到 `EAGAIN`、`poll` 可读可写、`MEM_CLEAR`
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 

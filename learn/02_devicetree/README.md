@@ -1,5 +1,7 @@
 # 设备树资源
 
+## 代码知识点
+
 SoC 上的平台设备没有 PCI 那种枚举。板级描述写在设备树里，内核把它变成 `struct resource`，probe 再用 `platform_get_resource` 取出来。
 
 `virt-reg.dts` 里这个节点：
@@ -37,6 +39,22 @@ cat /sys/devices/platform/virt_dt/irq         # 19
 
 `ch06_platform` 只演示 platform 总线的注册。资源布局以这一章为准。
 
+## 代码架构
+
+```
+insmod virt_dt.ko
+  platform_driver_register(virt_dt)
+  platform_device_register_full      带 IORESOURCE_MEM 和 IORESOURCE_IRQ 两项 resource
+    probe
+      platform_get_resource(MEM)     → devm_memremap
+      platform_get_resource(IRQ)     → irq = 19，只读取
+      of_property_read_u32           没有 OF 时失败，改用 platform_data 里的 40
+      writel / readl                 校验 id 和 threshold
+      device_create_file             threshold、id、irq
+rmmod virt_dt
+  platform_device_unregister → platform_driver_unregister
+```
+
 ## 在镜像里复现
 
 模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
@@ -46,7 +64,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter learn02
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/learn_02_devicetree_virt_dt.ko

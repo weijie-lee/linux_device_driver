@@ -30,7 +30,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch06
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch06_platform_platform_demo.ko
@@ -50,9 +50,24 @@ platform-framebuffer.0
 reg-dummy
 serial8250
 virt_plat
++ test -c /dev/virt_plat -o -b /dev/virt_plat
+node ok
 + echo hi > /dev/virt_plat
 + head -c 2 /dev/virt_plat
 hi
++ /bin/test_platform
+=== Ch06 Platform Device Driver Test ===
+
+[TC01] open/close
+  [PASS] open /dev/virt_plat
+[TC02] write
+  [PASS] write returns correct byte count
+[TC03] read
+  [PASS] read returns same byte count
+  [PASS] read data matches written data
+
+=== Test Summary ===
+PASS: 4  FAIL: 0
 + rmmod platform_demo
 rmmod ok
 [PASS] ch06_platform
@@ -62,7 +77,8 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch06_platform`
-- `/dev/virt_plat` 读回 `hi`，并且 sysfs 里能看到 `virt_plat`。
+- `node ok`，`/dev/virt_plat` 读回 `hi`，sysfs 里能看到 `virt_plat`
+- 用户态程序 `test_platform` 的结尾是 `PASS: 4  FAIL: 0`。
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 

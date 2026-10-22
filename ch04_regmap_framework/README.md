@@ -19,16 +19,38 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch08
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch08_regmap_regmap_demo.ko
 insmod ok
 + ls /dev/regmap_demo
 /dev/regmap_demo
++ test -c /dev/regmap_demo -o -b /dev/regmap_demo
+node ok
 + dmesg | grep regmap_demo
-[    4.451751] regmap_demo: initialized, 256 registers (32-bit each)
-[    4.451794] regmap_demo: debugfs: /sys/kernel/debug/regmap/regmap_demo/registers
+[    4.530168] regmap_demo: initialized, 256 registers (32-bit each)
+[    4.530217] regmap_demo: debugfs: /sys/kernel/debug/regmap/regmap_demo/registers
++ /bin/test_regmap
+=== Ch08 Regmap Driver Test ===
+
+[TC01] Read initial register value
+  [PASS] ioctl READ returns 0
+  reg[5] = 0x50 (expected 0x50)
+  [PASS] reg[5] initial value is 0x50
+[TC02] Write register
+  [PASS] ioctl WRITE returns 0
+[TC03] Read back written value
+  reg[10] = 0xdeadbeef (expected 0xDEADBEEF)
+  [PASS] read back matches written value
+[TC04] Update bits (mask=0xFF0000FF, val=0xAB000000)
+  [PASS] ioctl UPDBITS returns 0
+[TC05] Verify update_bits result
+  reg[10] = 0xabadbe00 (expected 0xABADBE00)
+  [PASS] update_bits result is correct
+
+=== Test Summary ===
+PASS: 6  FAIL: 0
 + rmmod regmap_demo
 rmmod ok
 [PASS] ch08_regmap

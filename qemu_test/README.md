@@ -35,6 +35,8 @@ docker run --rm ldd-lab chapter ch21
 
 章节名用 `ch01`、`ch21`、`learn01`、`hardcode`，或 `all`。
 
+改了命令或回显之后，用 `docker run --rm ldd-lab chapter all > /tmp/all.log` 取一份日志，再运行 `python3 qemu_test/refresh_transcripts.py /tmp/all.log`。它只刷新各章 README 里的回显代码块，知识点和成功判据是手写的。
+
 ## 快速开始
 
 ### 1. 安装依赖
@@ -155,26 +157,14 @@ run_qemu.sh                               ├── 输出 [PASS]/[FAIL]
 
 ## 测试覆盖范围
 
-| 章节 | 驱动模块 | 验证内容 |
-|------|---------|---------|
-| Ch01 | `kfifo_demo_static` | insmod/rmmod 正常 |
-| Ch02 | `globalmem` | `/dev/globalmem` 读写 |
-| Ch03 | `globalfifo` | `/dev/globalfifo` 写入 |
-| Ch04 | `second` | `/dev/second` 设备节点 |
-| Ch05 | `misc_demo` | `/dev/misc_demo` 设备节点 |
-| Ch06 | `platform_demo` | `/sys/bus/platform/devices/` sysfs 条目 |
-| Ch07 | `input_demo` | `/dev/input/eventN` 输入设备 |
-| Ch08 | `regmap_demo` | insmod/rmmod 正常 |
-| Ch09 | `watchdog_demo` | `/dev/watchdog` 设备节点 |
-| Ch10 | `rtc_demo` | `/dev/rtc` 设备节点 |
-| Ch11 | `pwm_demo` | `/sys/class/pwm/pwmchipN` sysfs |
-| Ch12 | `dma_demo` | insmod/rmmod 正常（DMA 内存分配） |
-| Ch13 | `snull` | `sn0`/`sn1` 网络接口 |
-| Ch14 | `eth_mac` | 虚拟以太网接口注册 |
-| Ch15 | `i2c_virt_master` + `i2c_virt_slave` | `/dev/i2c_virt` 设备节点 |
-| Ch16 | `spi_virt_master` + `spi_virt_slave` | `/dev/spi_virt` 设备节点 |
-| Ch17 | `vmem_disk` | `/dev/vmem_disk` 块设备 |
-| Ch18 | `mmc_virt` | `/dev/mmcblk0` MMC 卡枚举 |
+有两套检查，都在 5.15.0-173-generic 客户机里运行：
+
+| 命令 | 检查什么 | 项数 |
+|------|---------|------|
+| `docker run --rm ldd-lab test`（`init.sh`） | 每个模块 `insmod`，再看设备节点、sysfs 或网卡；`rmmod` 失败不算失败。`learn/` 的 7 个实验和 `hardcode/` 做功能检查 | 78 |
+| `docker run --rm ldd-lab chapter all`（`lab.sh`） | 每章打印命令和回显。`rmmod` 失败、期望字样缺失、设备节点不是字符设备或块设备，都算失败 | 76 |
+
+每一章的命令、回显和成功判据写在该章 README 的「在镜像里复现」里。`ch02`、`ch03`、`ch05`、`ch06`、`ch08` 还会运行各自 `tests/` 里的用户态程序，要求 `FAIL: 0`。`ch21`–`ch68` 多数只确认模块加载后 probe 建出了自己的节点并且能卸载，没有逐个驱动去做读写。
 
 ## 常见问题
 
@@ -195,7 +185,7 @@ sudo apt-get install linux-headers-5.15.0-173-generic \
 
 **Q: QEMU 测试超时**
 
-增大超时时间（默认 180 秒）：
+增大超时时间（默认 600 秒）：
 
 ```bash
 bash qemu_test/qemu_test_all.sh --timeout 300
@@ -224,11 +214,12 @@ bash qemu_test/run_qemu.sh --interactive
 
 ## 已知测试结果
 
-在以下环境中验证通过：
+CI（`.github/workflows/docker-validation.yml`）在 `ubuntu-22.04` 上构建镜像，依次运行 `test` 和 `chapter all`，失败时上传 `qemu_serial.log`。
 
 | 项目 | 版本 |
 |------|------|
-| 宿主机内核 | Ubuntu 22.04 / 5.15.0-173-generic |
-| QEMU | 6.2.0 |
-| busybox | 1.30.1 (静态链接) |
-| 测试结果 | PASS: 19 / FAIL: 0 |
+| 客户机内核 | Ubuntu 5.15.0-173-generic |
+| QEMU | 6.2.0（镜像内） |
+| busybox | 静态链接（镜像内） |
+| `test` | PASS 78 / FAIL 0 |
+| `chapter all` | PASS 76 / FAIL 0 |
