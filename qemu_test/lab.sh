@@ -48,13 +48,31 @@ run() {
     printf '%s\n' "$LAST"
 }
 
+# ls、cat 找不到文件时，错误信息里也带着路径，不能拿来当成功依据。
 want() {
-    if printf '%s\n' "$LAST" | grep -F -q "$1"; then
+    if printf '%s\n' "$LAST" | grep -v -e 'No such file' -e "can't open" | grep -F -q "$1"; then
         return 0
     fi
     echo "期望回显包含: $1"
     ok=0
     return 1
+}
+
+# 设备节点必须是字符设备或块设备。echo > 一个不存在的路径会在 devtmpfs 里建出普通文件。
+node() {
+    echo "+ test -c $1 -o -b $1"
+    if [ -c "$1" ] || [ -b "$1" ]; then
+        echo "node ok"
+    else
+        echo "node missing: $1"
+        ok=0
+    fi
+}
+
+# 各章 tests/ 里的用户态程序（build_rootfs.sh 静态编译进 /bin）。结尾必须是 FAIL: 0。
+usertest() {
+    run "/bin/$1"
+    want "FAIL: 0"
 }
 
 # 平台模块：加载后列出名字出现的 sysfs/dev 节点，并可选再跑一条取值命令。
@@ -102,10 +120,12 @@ lab_ch02() {
     load "$MODDIR/ch02_char_basic_globalmem.ko" || { finish; return; }
     run "ls /dev/global_mem_0 /dev/global_mem_1 /dev/global_mem_2 /dev/global_mem_3"
     want "global_mem_0"
+    node /dev/global_mem_0
     echo "+ echo test_data > /dev/global_mem_0"
     echo test_data > /dev/global_mem_0
     run "head -c 9 /dev/global_mem_0"
     want "test_data"
+    usertest test_globalmem
     unload globalmem
     finish
 }
@@ -115,10 +135,12 @@ lab_ch03() {
     load "$MODDIR/ch03_char_advanced_globalfifo.ko" || { finish; return; }
     run "ls /dev/global_mem_0"
     want "global_mem_0"
+    node /dev/global_mem_0
     echo "+ echo fifo_test > /dev/global_mem_0"
     echo fifo_test > /dev/global_mem_0
     run "head -c 9 /dev/global_mem_0"
     want "fifo_test"
+    usertest test_globalfifo
     unload globalfifo
     finish
 }
@@ -128,10 +150,13 @@ lab_ch04() {
     load "$MODDIR/ch04_timer_second.ko" || { finish; return; }
     run "ls /dev/second"
     want "/dev/second"
+    node /dev/second
     echo "+ exec 3<>/dev/second"
     exec 3<>/dev/second
     echo "+ sleep 2"
     sleep 2
+    run "if ( : < /dev/second ) 2>/dev/null; then echo second-open-allowed; else echo second-open-refused; fi"
+    want "second-open-refused"
     echo "+ head -c 4 <&3 > /tmp/sec"
     head -c 4 <&3 > /tmp/sec
     exec 3<&-
@@ -152,10 +177,12 @@ lab_ch05() {
     load "$MODDIR/ch05_misc_misc_demo.ko" || { finish; return; }
     run "ls /dev/misc_demo"
     want "/dev/misc_demo"
+    node /dev/misc_demo
     echo "+ echo miscdata > /dev/misc_demo"
     echo miscdata > /dev/misc_demo
     run "head -c 8 /dev/misc_demo"
     want "miscdata"
+    usertest test_misc
     unload misc_demo
     finish
 }
@@ -165,10 +192,12 @@ lab_ch06() {
     load "$MODDIR/ch06_platform_platform_demo.ko" || { finish; return; }
     run "ls /dev/virt_plat /sys/bus/platform/devices"
     want "virt_plat"
+    node /dev/virt_plat
     echo "+ echo hi > /dev/virt_plat"
     echo hi > /dev/virt_plat
     run "head -c 2 /dev/virt_plat"
     want "hi"
+    usertest test_platform
     unload platform_demo
     finish
 }
@@ -191,8 +220,10 @@ lab_ch08() {
     load "$MODDIR/ch08_regmap_regmap_demo.ko" || { finish; return; }
     run "ls /dev/regmap_demo"
     want "/dev/regmap_demo"
+    node /dev/regmap_demo
     run "dmesg | grep regmap_demo"
     want "initialized"
+    usertest test_regmap
     unload regmap_demo
     finish
 }
@@ -264,6 +295,7 @@ lab_ch15() {
     load "$MODDIR/ch15_i2c_i2c_slave.ko" || { unload i2c_master; finish; return; }
     run "ls /dev/i2c_virt"
     want "/dev/i2c_virt"
+    node /dev/i2c_virt
     run "dmesg | grep i2c_virt"
     want "registered as i2c-"
     echo "+ echo ab > /dev/i2c_virt"
@@ -281,6 +313,7 @@ lab_ch16() {
     load "$MODDIR/ch16_spi_spi_slave.ko" || { unload spi_master; finish; return; }
     run "ls /dev/spi_virt"
     want "/dev/spi_virt"
+    node /dev/spi_virt
     echo "+ echo sp > /dev/spi_virt"
     echo sp > /dev/spi_virt
     run "head -c 2 /dev/spi_virt"
@@ -295,6 +328,7 @@ lab_ch17() {
     load "$MODDIR/ch17_block_vmem_disk.ko" || { finish; return; }
     run "ls /dev/vmem_disk0 /sys/block"
     want "vmem_disk"
+    node /dev/vmem_disk0
     unload vmem_disk
     finish
 }

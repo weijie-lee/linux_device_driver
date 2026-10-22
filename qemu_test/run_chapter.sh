@@ -27,9 +27,17 @@ if [[ "${CHAPTER}" == "ch00" || "${CHAPTER}" == "ch00_framework" ]]; then
     exit 0
 fi
 
+# .ko 都在，并且没有源码比最旧的 .ko 更新时才跳过编译。
+# 挂载本机目录后改了 .c，要重新编译，否则打进 initramfs 的是旧模块。
 skip=()
 if [[ -f ch01_kernel_basics/kfifo_demo_static.ko && -f learn/07_debug/virt_debug.ko ]]; then
-    skip=(--skip-build)
+    oldest="$(find ch* learn hardcode -name '*.ko' -printf '%T@ %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)"
+    newer="$(find ch* learn hardcode -not -path '*/tests/*' \( -name '*.c' -o -name '*.h' -o -name Makefile \) -not -name '*.mod.c' -newer "${oldest}" -print -quit)"
+    if [[ -z "${newer}" ]]; then
+        skip=(--skip-build)
+    else
+        echo "源码比 .ko 新（${newer}），重新编译"
+    fi
 fi
 
 bash "${SCRIPT_DIR}/build_rootfs.sh" "${skip[@]}"

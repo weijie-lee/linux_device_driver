@@ -315,6 +315,24 @@ gcc -static -O2 -Wall -o "${ROOTFS_DIR}/bin/uapi_test" \
 chmod 755 "${ROOTFS_DIR}/bin/uapi_test"
 ok "uapi_test 已放入 rootfs"
 
+# 各章 tests/ 里的用户态程序。静态链接后放进 /bin，由 lab.sh 在客户机里执行。
+USER_TESTS=(
+    "ch02_char_basic/tests/test_globalmem.c"
+    "ch03_char_advanced/tests/test_globalfifo.c"
+    "ch05_misc/tests/test_misc.c"
+    "ch06_platform/tests/test_platform.c"
+    "ch08_regmap/tests/test_regmap.c"
+)
+for src in "${USER_TESTS[@]}"; do
+    bin="$(basename "${src}" .c)"
+    if gcc -static -O2 -Wall -o "${ROOTFS_DIR}/bin/${bin}" "${REPO_DIR}/${src}"; then
+        chmod 755 "${ROOTFS_DIR}/bin/${bin}"
+        ok "用户态测试 ${bin} 已放入 rootfs"
+    else
+        die "编译 ${src} 失败"
+    fi
+done
+
 # ── Step 5: 生成 init 脚本 ────────────────────────────────────────────────────
 info "Step 5/5: 生成 init 测试脚本..."
 
