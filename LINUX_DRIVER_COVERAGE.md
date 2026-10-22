@@ -164,4 +164,4 @@
 | `xen` | Xen 虚拟化后端与前端。 |
 | `zorro` | Amiga Zorro 总线。 |
 
-`drivers/base` 没有单独模块：驱动模型、总线、设备和 `platform` 由 `ch06_platform` 以及其余各章共同使用。
+`drivers/base` 的拆解在 `kernel/01_driver_framework`：模块自己注册 `bus_type`，把 `match`、`probe`、`remove` 和 `uevent` 的顺序打出来。`platform` 总线的用法仍看 `ch06_platform`。

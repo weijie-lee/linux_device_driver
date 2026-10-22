@@ -6,16 +6,17 @@
 
 面向内核 **5.15** 的 Linux 驱动教学仓库。目标是从模块和字符设备走到能写一块小的 SoC 外设：用户接口、设备树资源、中断、regmap、时钟、电源管理和 DMA 串在同一条线上，并在 QEMU 客户机里检查。
 
-仓库有两层：
+仓库有三层：
 
 | 层 | 目录 | 怎么用 |
 | --- | --- | --- |
 | 主线 | `ch00`、`ch01`–`ch06`、`hardcode/`、`learn/`、`ch07`–`ch20` | 按 [下面的顺序](#学习顺序) 读和做 |
 | 索引 | `ch21`–`ch68` | 要查某个子系统的注册函数时再打开，不必按编号学完 |
+| 内核 | `kernel/` | 和具体驱动分开。先拆 `drivers/base` 的总线、设备和绑定，见 `kernel/01_driver_framework` |
 
-顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/` 和 `learn/` 的 7 个模块。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
+顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/`、`learn/` 的 7 个模块，以及 `kernel/01_driver_framework`。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
 
-客户机内核是 Ubuntu `5.15.0-173-generic`。QEMU 里有两套检查：冒烟套件 **78 项**，章节实验 **76 项**，最近一次都是 0 项失败，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。GitHub Actions 每次推送和 PR 都会跑这两套。
+客户机内核是 Ubuntu `5.15.0-173-generic`。QEMU 里有两套检查：冒烟套件 **79 项**，章节实验 **77 项**，最近一次都是 0 项失败，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。GitHub Actions 每次推送和 PR 都会跑这两套。多出来的一项是 `kernel/01_driver_framework`。
 
 ## 读之前要知道的三件事
 
@@ -57,7 +58,7 @@ docker run --rm -it ldd-lab
 docker run --rm ldd-lab test
 ```
 
-只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`，或 `all`。
+只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01`，或 `all`。
 
 ```bash
 docker run --rm ldd-lab chapter ch02
@@ -120,6 +121,7 @@ bash qemu_test/run_qemu.sh --interactive
 ```
 linux_device_driver/
 ├── ch00_framework/            # 框架总览，只读，不编译
+├── kernel/                    # 内核主线，先拆 drivers/base
 ├── ch01_kernel_basics/        # container_of、链表、kfifo
 ├── ch02_char_basic/           # globalmem：cdev、read/write
 ├── ch03_char_advanced/        # globalfifo：阻塞、poll、fasync、ioctl
@@ -145,6 +147,12 @@ linux_device_driver/
 ### 1. 先看地图：`ch00_framework`
 
 这一章没有模块。它把后面会反复出现的骨架放在一处：字符设备、platform、总线—设备—驱动、网络设备、块设备、中断、内存、模块生命周期、调试。先读第 1–4 节和第 7–9 节，网络和块设备可以留到 `ch13`、`ch17`。
+
+### 内核主线：`kernel/`
+
+具体驱动仍按下面的编号读。要看操作系统怎样把设备和驱动绑在一起，打开 `kernel/`，不要在 `ch*` 里再找一份。
+
+`kernel/01_driver_framework` 对的是 5.15 `drivers/base`：`bus_register`、`device_add`、`driver_attach`、`really_probe`。模块自己注册一条总线，一台设备匹配后进入 probe，另一台在 `match` 返回 0 时停住。客户机里 `/sys/bus/lddfw/trace` 应是 `bus_register > uevent lddfw-sensor > uevent lddfw-other > match lddfw-sensor 1 > bus_probe lddfw-sensor > driver_probe lddfw-sensor > uevent lddfw-sensor > match lddfw-other 0`。`platform` 和 PCI 是这条总线上的两种特例，分别在 `ch06` 和 `ch19`。
 
 ### 2. 字符设备到 platform：`ch01`–`ch06`
 

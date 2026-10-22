@@ -4,6 +4,12 @@
 
 `ch01`–`ch68` 按子系统各给一个可加载模块。`ch21` 以后当作索引：要查 GPIO、IIO 或 DRM 时打开对应目录。从入门到能写一块新外设，按下面的顺序读。
 
+## 内核主线
+
+具体驱动在 `ch*` 和 `learn/`。要拆操作系统怎么管理驱动，从 `kernel/` 读，不按章节编号插进去。
+
+1. `kernel/01_driver_framework`：5.15 `drivers/base` 的 `bus_type`、`device`、`device_driver`。先注册总线和两台设备，再注册驱动。匹配上的设备走 `bus->probe` 再进驱动的 probe；另一台 `match` 返回 0。`/sys/bus/lddfw/trace` 记录这个顺序。
+
 ## 1. 框架和字符设备
 
 1. 读 `ch00_framework`。

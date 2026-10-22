@@ -4,7 +4,7 @@ set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
     echo "用法: bash qemu_test/run_chapter.sh <章节> [run_qemu.sh 的选项]" >&2
-    echo "  章节例子: ch01  ch21  learn01  hardcode  all" >&2
+    echo "  章节例子: ch01  ch21  learn01  hardcode  kernel01  all" >&2
     exit 2
 fi
 
@@ -31,8 +31,8 @@ fi
 # 挂载本机目录后改了 .c，要重新编译，否则打进 initramfs 的是旧模块。
 skip=()
 if [[ -f ch01_kernel_basics/kfifo_demo_static.ko && -f learn/07_debug/virt_debug.ko ]]; then
-    oldest="$(find ch* learn hardcode -name '*.ko' -printf '%T@ %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)"
-    newer="$(find ch* learn hardcode -not -path '*/tests/*' \( -name '*.c' -o -name '*.h' -o -name Makefile \) -not -name '*.mod.c' -newer "${oldest}" -print -quit)"
+    oldest="$(find ch* learn hardcode kernel -name '*.ko' -printf '%T@ %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)"
+    newer="$(find ch* learn hardcode kernel -not -path '*/tests/*' \( -name '*.c' -o -name '*.h' -o -name Makefile \) -not -name '*.mod.c' -newer "${oldest}" -print -quit)"
     if [[ -z "${newer}" ]]; then
         skip=(--skip-build)
     else
