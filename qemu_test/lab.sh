@@ -652,11 +652,10 @@ kif_hits() {
             *": virt_kif_open <-"*) hits="$hits virt_kif_open" ;;
             *": vfs_read <-"*) hits="$hits vfs_read" ;;
             *": virt_kif_read <-"*) hits="$hits virt_kif_read" ;;
-            *": vfs_write <-"*) hits="$hits vfs_write" ;;
-            *": virt_call_write <-"*) hits="$hits virt_call_write" ;;
-            *": _copy_from_user <-"*) hits="$hits _copy_from_user" ;;
-            *": virt_call_read <-"*) hits="$hits virt_call_read" ;;
-            *": _copy_to_user <-"*) hits="$hits _copy_to_user" ;;
+            *": virt_call_write <-vfs_write"*) hits="$hits virt_call_write" ;;
+            *": __check_object_size <-virt_call_write"*) hits="$hits check_object_size" ;;
+            *": virt_call_read <-vfs_read"*) hits="$hits virt_call_read" ;;
+            *": __check_object_size <-virt_call_read"*) hits="$hits check_object_size" ;;
         esac
     done < "$TR/trace"
     echo "$hits"
@@ -839,13 +838,13 @@ lab_kernel03() {
     fi
     load "$MODDIR/kernel_03_driver_calls_virt_call.ko" || { finish; return; }
     node /dev/virt_call
-    if ! kif_arm vfs_write virt_call_write _copy_from_user; then
+    echo "+ printf ping > /dev/virt_call"
+    if ! kif_arm virt_call_write __check_object_size; then
         kif_off
         unload virt_call
         finish
         return
     fi
-    echo "+ printf ping > /dev/virt_call"
     printf ping > /dev/virt_call
     echo "write ok"
     echo "+ echo 0 > $TR/tracing_on"
@@ -855,7 +854,7 @@ lab_kernel03() {
     hits=$(kif_hits)
     kif_off
     echo "write-hits:$hits"
-    write_expect=" vfs_write virt_call_write _copy_from_user"
+    write_expect=" virt_call_write check_object_size"
     if [ "$hits" = "$write_expect" ]; then
         echo "write order ok"
     else
@@ -863,13 +862,13 @@ lab_kernel03() {
         echo "expect:$write_expect"
         ok=0
     fi
-    if ! kif_arm vfs_read virt_call_read _copy_to_user; then
+    echo "+ head -c 4 /dev/virt_call > /tmp/call_out"
+    if ! kif_arm virt_call_read __check_object_size; then
         kif_off
         unload virt_call
         finish
         return
     fi
-    echo "+ head -c 4 /dev/virt_call > /tmp/call_out"
     head -c 4 /dev/virt_call > /tmp/call_out
     echo "+ echo 0 > $TR/tracing_on"
     echo 0 > "$TR/tracing_on"
@@ -878,7 +877,7 @@ lab_kernel03() {
     hits=$(kif_hits)
     kif_off
     echo "read-hits:$hits"
-    read_expect=" vfs_read virt_call_read _copy_to_user"
+    read_expect=" virt_call_read check_object_size"
     if [ "$hits" = "$read_expect" ]; then
         echo "read order ok"
     else

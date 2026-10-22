@@ -768,12 +768,10 @@ call_hits() {
     hits=""
     while IFS= read -r line; do
         case "$line" in
-            *": vfs_write <-"*) hits="$hits vfs_write" ;;
-            *": virt_call_write <-"*) hits="$hits virt_call_write" ;;
-            *": _copy_from_user <-"*) hits="$hits _copy_from_user" ;;
-            *": vfs_read <-"*) hits="$hits vfs_read" ;;
-            *": virt_call_read <-"*) hits="$hits virt_call_read" ;;
-            *": _copy_to_user <-"*) hits="$hits _copy_to_user" ;;
+            *": virt_call_write <-vfs_write"*) hits="$hits virt_call_write" ;;
+            *": __check_object_size <-virt_call_write"*) hits="$hits check_object_size" ;;
+            *": virt_call_read <-vfs_read"*) hits="$hits virt_call_read" ;;
+            *": __check_object_size <-virt_call_read"*) hits="$hits check_object_size" ;;
         esac
     done < "$TR/trace"
     echo "$hits"
@@ -785,9 +783,9 @@ call_off() {
 }
 safe_insmod "$MODDIR/kernel_03_driver_calls_virt_call.ko"
 if [ $? -eq 0 ] && [ -f "$TR/trace" ] && [ -c /dev/virt_call ]; then
-    write_expect=" vfs_write virt_call_write _copy_from_user"
-    read_expect=" vfs_read virt_call_read _copy_to_user"
-    if call_arm vfs_write virt_call_write _copy_from_user; then
+    write_expect=" virt_call_write check_object_size"
+    read_expect=" virt_call_read check_object_size"
+    if call_arm virt_call_write __check_object_size; then
         printf ping > /dev/virt_call
         echo 0 > "$TR/tracing_on"
         write_hits=$(call_hits)
@@ -796,7 +794,7 @@ if [ $? -eq 0 ] && [ -f "$TR/trace" ] && [ -c /dev/virt_call ]; then
         write_hits=""
         call_off
     fi
-    if call_arm vfs_read virt_call_read _copy_to_user; then
+    if call_arm virt_call_read __check_object_size; then
         head -c 4 /dev/virt_call > /tmp/call_out
         echo 0 > "$TR/tracing_on"
         read_hits=$(call_hits)

@@ -164,4 +164,4 @@
 | `xen` | Xen 虚拟化后端与前端。 |
 | `zorro` | Amiga Zorro 总线。 |
 
-`drivers/base` 的拆解在 `kernel/01_driver_framework`：模块自己注册 `bus_type`，把 `match`、`probe`、`remove` 和 `uevent` 的顺序打出来。`kernel/02_kernel_interface` 用 ftrace 看 `device_add`、`really_probe`、`chrdev_open` 和 `vfs_read` 怎样走进驱动。`kernel/03_driver_calls` 看驱动再调用 `_copy_from_user` 和 `_copy_to_user` 把字节搬过用户态边界。`platform` 总线的用法仍看 `ch06_platform`。
+`drivers/base` 的拆解在 `kernel/01_driver_framework`：模块自己注册 `bus_type`，把 `match`、`probe`、`remove` 和 `uevent` 的顺序打出来。`kernel/02_kernel_interface` 用 ftrace 看 `device_add`、`really_probe`、`chrdev_open` 和 `vfs_read` 怎样走进驱动。`kernel/03_driver_calls` 看驱动调用 `copy_from_user` / `copy_to_user`：函数跟踪里能点名的是 `__check_object_size`，调用者是驱动的 read/write。`platform` 总线的用法仍看 `ch06_platform`。

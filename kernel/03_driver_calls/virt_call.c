@@ -6,9 +6,12 @@
  *   vfs_write 调用驱动的 write，驱动再调用 _copy_from_user
  *   vfs_read  调用驱动的 read，驱动再调用 _copy_to_user
  *
- * 5.15 的 x86 上，copy_from_user / copy_to_user 是内联函数。
- * 函数跟踪里能单独点名的是 _copy_from_user 和 _copy_to_user。
- * 这两个回调标了 noinline，调用者才会落在驱动函数上。
+ * 5.15 的 x86 上，copy_from_user / copy_to_user 是内联函数，
+ * 真正搬字节的 _copy_from_user / _copy_to_user 不在函数跟踪过滤表里。
+ * 长度不是编译期常量时，内联路径会先调用 __check_object_size。
+ * 跟踪里能看到的就是 __check_object_size <-virt_call_write。
+ * 拷贝结束后调用 tracing_off()，避免 shell 自己的下一次 write
+ * 再触发同名检查，把窗口里的顺序冲掉。
  *
  * 缓冲只有 64 字节。一次 write 放进内核，下一次 open 再 read 出来。
  * copy_* 可能睡眠，所以用 mutex，不用自旋锁。
@@ -45,6 +48,7 @@ static noinline ssize_t virt_call_write(struct file *file, const char __user *bu
 	mutex_unlock(&call_lock);
 
 	*ppos += n;
+	tracing_off();
 	pr_info("virt_call: stored %zu\n", n);
 	return n;
 }
@@ -69,6 +73,7 @@ static noinline ssize_t virt_call_read(struct file *file, char __user *buf,
 	*ppos += n;
 	mutex_unlock(&call_lock);
 
+	tracing_off();
 	pr_info("virt_call: returned %zu\n", n);
 	return n;
 }

@@ -10,25 +10,18 @@
 
 **内核调用驱动。** `vfs_write()` 在 `f_op->write` 非空时直接调用它。跟踪里是 `virt_call_write <-vfs_write`。`vfs_read()` 同样直接调用 `virt_call_read`。
 
-**驱动调用内核。** 用户态指针不能在内核里直接解引用。5.15 的 x86 上，`copy_from_user()` 和 `copy_to_user()` 是内联函数，函数跟踪里单独的符号是 `_copy_from_user` 和 `_copy_to_user`。驱动的 read/write 标了 `noinline`，所以调用者落在驱动函数上，而不是被折进别的函数。
+**驱动调用内核。** 用户态指针不能在内核里直接解引用。5.15 的 x86 上，`copy_from_user()` 和 `copy_to_user()` 是内联函数，真正搬字节的是 `_copy_from_user` 和 `_copy_to_user`。这台客户机的 `set_ftrace_filter` 和 `kprobe_events` 都不接受这两个名字。
 
-写 4 个字节 `ping` 时，进入顺序是：
-
-```
-vfs_write
-  virt_call_write
-    _copy_from_user
-```
-
-读回这 4 个字节时：
+长度不是编译期常量时，内联进去的 `check_copy_size()` 会先调用 `__check_object_size()`。这是 `CONFIG_HARDENED_USERCOPY` 打开之后的检查，调用者就是驱动函数。跟踪里是：
 
 ```
-vfs_read
-  virt_call_read
-    _copy_to_user
+virt_call_write <-vfs_write
+__check_object_size <-virt_call_write
 ```
 
-函数跟踪记的是函数进入的时刻，所以过滤之后的顺序就是上面这两列。`_copy_from_user` 的调用者是 `virt_call_write`，`_copy_to_user` 的调用者是 `virt_call_read`。
+读的时候调用者换成 `virt_call_read`。`_copy_from_user` 紧跟在这次检查之后执行，只是这一项不会出现在函数跟踪里。
+
+拷贝一结束，驱动调用 `tracing_off()`。否则 shell 接着写 `tracing_on` 时，那一次 `write` 也会进入 `__check_object_size`，窗口里就会多出一条。
 
 `copy_from_user()` 可能睡眠，所以缓冲用 mutex 保护，不放在自旋锁里。超过 64 字节的写入只保留前 64 字节，返回值是实际拷进内核的长度。这个长度一路回到 `write` 系统调用的返回值。
 
@@ -42,11 +35,13 @@ module_init
 
 printf ping > /dev/virt_call            ftrace 已经打开
   vfs_write → virt_call_write
-    _copy_from_user                     用户态字节进入 call_buf
+    __check_object_size                 然后 _copy_from_user 把字节放进 call_buf
+    tracing_off
 
 head -c 4 /dev/virt_call
   vfs_read → virt_call_read
-    _copy_to_user                       call_buf 回到用户态
+    __check_object_size                 然后 _copy_to_user 把 call_buf 交回用户态
+    tracing_off
 
 module_exit
   misc_deregister
@@ -61,16 +56,100 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter kernel03
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。方括号里的时间戳、CPU 号、进程号每次都不同，对照函数名和 `<-` 后面的调用者即可。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、CPU 号、进程号每次都不同，对照函数名和 `<-` 后面的调用者即可。
+
+打开 `/dev/virt_call` 时，shell 解析路径会走 `strncpy_from_user`，那几次 `__check_object_size` 的调用者不是驱动。判定只保留调用者是 `virt_call_write` 或 `virt_call_read` 的那一条。
+
+```
+======== kernel03_calls ========
++ insmod /lib/modules/driver_test/kernel_03_driver_calls_virt_call.ko
+insmod ok
++ test -c /dev/virt_call -o -b /dev/virt_call
+node ok
++ printf ping > /dev/virt_call
++ echo 0 > /sys/kernel/tracing/tracing_on
++ echo nop > /sys/kernel/tracing/current_tracer
++ echo function > /sys/kernel/tracing/current_tracer
++ echo virt_call_write > /sys/kernel/tracing/set_ftrace_filter
++ echo __check_object_size >> /sys/kernel/tracing/set_ftrace_filter
++ echo > /sys/kernel/tracing/trace
++ echo 1 > /sys/kernel/tracing/tracing_on
+write ok
++ echo 0 > /sys/kernel/tracing/tracing_on
++ head -n 20 /sys/kernel/tracing/trace
+# tracer: function
+#
+# entries-in-buffer/entries-written: 4/4   #P:2
+#
+#                                _-----=> irqs-off
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-1       [000] .....     8.217649: __check_object_size <-strncpy_from_user
+              sh-1       [000] .....     8.218436: __check_object_size <-strncpy_from_user
+              sh-1       [000] .....     8.218966: virt_call_write <-vfs_write
+              sh-1       [000] .....     8.218986: __check_object_size <-virt_call_write
++ echo 0 > /sys/kernel/tracing/tracing_on
++ echo nop > /sys/kernel/tracing/current_tracer
+write-hits: virt_call_write check_object_size
+write order ok
++ head -c 4 /dev/virt_call > /tmp/call_out
++ echo 0 > /sys/kernel/tracing/tracing_on
++ echo nop > /sys/kernel/tracing/current_tracer
++ echo function > /sys/kernel/tracing/current_tracer
++ echo virt_call_read > /sys/kernel/tracing/set_ftrace_filter
++ echo __check_object_size >> /sys/kernel/tracing/set_ftrace_filter
++ echo > /sys/kernel/tracing/trace
++ echo 1 > /sys/kernel/tracing/tracing_on
++ echo 0 > /sys/kernel/tracing/tracing_on
++ head -n 20 /sys/kernel/tracing/trace
+# tracer: function
+#
+# entries-in-buffer/entries-written: 6/6   #P:2
+#
+#                                _-----=> irqs-off
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-1       [000] .....     8.661238: __check_object_size <-strncpy_from_user
+            head-157     [001] .....     8.663753: __check_object_size <-strncpy_from_user
+            head-157     [001] .....     8.663930: __check_object_size <-strncpy_from_user
+            head-157     [001] .....     8.664056: __check_object_size <-strncpy_from_user
+            head-157     [001] .....     8.664199: virt_call_read <-vfs_read
+            head-157     [001] .....     8.664240: __check_object_size <-virt_call_read
++ echo 0 > /sys/kernel/tracing/tracing_on
++ echo nop > /sys/kernel/tracing/current_tracer
+read-hits: virt_call_read check_object_size
+read order ok
++ cat /tmp/call_out
+ping
+read ok
++ rmmod virt_call
+rmmod ok
++ dmesg | grep virt_call:
+[    1.954782] virt_call: loading out-of-tree module taints kernel.
+[    1.954956] virt_call: module verification failed: signature and/or required key missing - tainting kernel
+[    8.219090] virt_call: stored 4
+[    8.664278] virt_call: returned 4
+[PASS] kernel03_calls
+```
 
 实验成功要同时满足：
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] kernel03_calls`
-- `write-hits` 整行是 `vfs_write virt_call_write _copy_from_user`
-- 跟踪原文里能看到 `_copy_from_user <-virt_call_write`
-- `read-hits` 整行是 `vfs_read virt_call_read _copy_to_user`
-- 跟踪原文里能看到 `_copy_to_user <-virt_call_read`
+- `write-hits` 整行是 `virt_call_write check_object_size`
+- 跟踪原文里能看到 `virt_call_write <-vfs_write` 和 `__check_object_size <-virt_call_write`
+- `read-hits` 整行是 `virt_call_read check_object_size`
+- 跟踪原文里能看到 `virt_call_read <-vfs_read` 和 `__check_object_size <-virt_call_read`
 - `/tmp/call_out` 的内容是 `ping`
 - `dmesg` 里有 `virt_call: stored 4` 和 `virt_call: returned 4`
 

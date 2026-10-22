@@ -8,7 +8,7 @@
 | 镜像 | Ubuntu 22.04，GCC 11.4.0，`linux-headers-5.15.0-173-generic` |
 | 测试内核 | Linux 5.15.0-173-generic（x86_64，QEMU 6.2.0，无 KVM 时用 TCG） |
 | 持续集成 | `.github/workflows/docker-validation.yml`，推送到 `master` 和每个 PR 都会运行 |
-| 最近一次 | 2026-10-22 |
+| 最近一次 | 2026-10-23 |
 
 容器里的 `uname -r` 是宿主机内核。模块只在 QEMU 客户机里 `insmod`。
 

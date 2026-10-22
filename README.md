@@ -156,7 +156,7 @@ linux_device_driver/
 
 `kernel/02_kernel_interface` 把这条路径上的内核函数也打出来。写 `/sys/bus/virtkif/bind` 时，ftrace 要依次出现 `kernfs_fop_write_iter`、`device_add`、`really_probe`、`virt_kif_bus_probe`、`virt_kif_driver_probe`。读 `/dev/virt_kif` 时，要依次出现 `chrdev_open`、`virt_kif_open`、`vfs_read`、`virt_kif_read`。
 
-`kernel/03_driver_calls` 看另一个方向。用户态写 `/dev/virt_call` 时，`vfs_write` 调用 `virt_call_write`，驱动再调用 `_copy_from_user`。读回来时，`vfs_read` 调用 `virt_call_read`，驱动再调用 `_copy_to_user`。读到的 4 个字节就是写入的 `ping`。
+`kernel/03_driver_calls` 看另一个方向。用户态写 `/dev/virt_call` 时，跟踪里是 `virt_call_write <-vfs_write`，接着是 `__check_object_size <-virt_call_write`。这是内联的 `copy_from_user()` 在搬字节之前做的长度检查；`_copy_from_user` 本身不在这台内核的函数跟踪过滤表里。读回来时，调用者换成 `virt_call_read`。读到的 4 个字节就是写入的 `ping`。
 
 ### 2. 字符设备到 platform：`ch01`–`ch06`
 
