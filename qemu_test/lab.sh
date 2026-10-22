@@ -586,6 +586,77 @@ lab_learn07() {
     finish
 }
 
+kif_off() {
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ echo nop > $TR/current_tracer"
+    echo nop > "$TR/current_tracer"
+    echo 1 > "$TR/tracing_on"
+}
+
+kif_arm() {
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ echo nop > $TR/current_tracer"
+    echo nop > "$TR/current_tracer"
+    echo "+ echo function > $TR/current_tracer"
+    if ! echo function > "$TR/current_tracer"; then
+        echo "function tracer refused"
+        ok=0
+        return 1
+    fi
+    first=1
+    for fn in "$@"; do
+        if [ "$first" -eq 1 ]; then
+            echo "+ echo $fn > $TR/set_ftrace_filter"
+            if ! echo "$fn" > "$TR/set_ftrace_filter" 2>/tmp/ft_err; then
+                echo "filter refused: $fn $(cat /tmp/ft_err)"
+                ok=0
+                return 1
+            fi
+            first=0
+        else
+            echo "+ echo $fn >> $TR/set_ftrace_filter"
+            if ! echo "$fn" >> "$TR/set_ftrace_filter" 2>/tmp/ft_err; then
+                echo "filter refused: $fn $(cat /tmp/ft_err)"
+                ok=0
+                return 1
+            fi
+        fi
+    done
+    echo "+ echo > $TR/trace"
+    echo > "$TR/trace"
+    echo "+ echo 1 > $TR/tracing_on"
+    echo 1 > "$TR/tracing_on"
+    return 0
+}
+
+kif_hits() {
+    hits=""
+    while IFS= read -r line; do
+        case "$line" in
+            *": kernfs_fop_write_iter <-"*) hits="$hits kernfs_fop_write_iter" ;;
+            *": sysfs_kf_write <-"*) hits="$hits sysfs_kf_write" ;;
+            *": bus_attr_store <-"*) hits="$hits bus_attr_store" ;;
+            *": virt_kif_bind_store <-"*) hits="$hits virt_kif_bind_store" ;;
+            *": device_add <-"*) hits="$hits device_add" ;;
+            *": virt_kif_uevent <-"*) hits="$hits virt_kif_uevent" ;;
+            *": bus_probe_device <-"*) hits="$hits bus_probe_device" ;;
+            *": device_initial_probe <-"*) hits="$hits device_initial_probe" ;;
+            *": virt_kif_match <-"*) hits="$hits virt_kif_match" ;;
+            *": driver_probe_device <-"*) hits="$hits driver_probe_device" ;;
+            *": really_probe <-"*) hits="$hits really_probe" ;;
+            *": virt_kif_bus_probe <-"*) hits="$hits virt_kif_bus_probe" ;;
+            *": virt_kif_driver_probe <-"*) hits="$hits virt_kif_driver_probe" ;;
+            *": chrdev_open <-"*) hits="$hits chrdev_open" ;;
+            *": virt_kif_open <-"*) hits="$hits virt_kif_open" ;;
+            *": vfs_read <-"*) hits="$hits vfs_read" ;;
+            *": virt_kif_read <-"*) hits="$hits virt_kif_read" ;;
+        esac
+    done < "$TR/trace"
+    echo "$hits"
+}
+
 lab_kernel01() {
     begin "kernel01_framework"
     load "$MODDIR/kernel_01_driver_framework_virt_framework.ko" || { finish; return; }
@@ -639,6 +710,116 @@ lab_kernel01() {
     finish
 }
 
+lab_kernel02() {
+    begin "kernel02_interface"
+    TR=/sys/kernel/tracing
+    if [ ! -f "$TR/trace" ]; then
+        TR=/sys/kernel/debug/tracing
+    fi
+    if [ ! -f "$TR/trace" ]; then
+        echo "tracefs missing"
+        ok=0
+        finish
+        return
+    fi
+    load "$MODDIR/kernel_02_kernel_interface_virt_kif.ko" || { finish; return; }
+    node /dev/virt_kif
+    if ! kif_arm kernfs_fop_write_iter sysfs_kf_write bus_attr_store \
+        virt_kif_bind_store device_add virt_kif_uevent bus_probe_device \
+        device_initial_probe virt_kif_match driver_probe_device really_probe \
+        virt_kif_bus_probe virt_kif_driver_probe; then
+        kif_off
+        unload virt_kif
+        finish
+        return
+    fi
+    echo "+ echo 1 > /sys/bus/virtkif/bind"
+    if ! echo 1 > /sys/bus/virtkif/bind 2>/tmp/bind_err; then
+        echo "bind failed: $(cat /tmp/bind_err)"
+        ok=0
+    else
+        echo "bind ok"
+    fi
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ head -n 30 $TR/trace"
+    head -n 30 "$TR/trace"
+    hits=$(kif_hits)
+    kif_off
+    echo "bind-hits:$hits"
+    bind_expect=" kernfs_fop_write_iter sysfs_kf_write bus_attr_store virt_kif_bind_store device_add virt_kif_uevent bus_probe_device device_initial_probe virt_kif_match driver_probe_device really_probe virt_kif_bus_probe virt_kif_driver_probe virt_kif_uevent"
+    if [ "$hits" = "$bind_expect" ]; then
+        echo "bind order ok"
+    else
+        echo "bind order mismatch"
+        echo "expect:$bind_expect"
+        ok=0
+    fi
+    run "cat /sys/bus/virtkif/trace"
+    cb_expect="bus_register > uevent virtkif-sensor > match virtkif-sensor 1 > bus_probe virtkif-sensor > driver_probe virtkif-sensor > uevent virtkif-sensor"
+    if [ "$LAST" = "$cb_expect" ]; then
+        echo "callback trace ok"
+    else
+        echo "callback trace mismatch"
+        ok=0
+    fi
+    run "cat /sys/bus/virtkif/devices/virtkif-sensor/bound"
+    want "1"
+    echo "+ test -e /sys/bus/virtkif/devices/virtkif-sensor/driver"
+    if [ -e /sys/bus/virtkif/devices/virtkif-sensor/driver ]; then
+        echo "sensor bound"
+    else
+        echo "sensor driver link missing"
+        ok=0
+    fi
+    echo "+ echo 1 > /sys/bus/virtkif/bind"
+    if echo 1 > /sys/bus/virtkif/bind 2>/dev/null; then
+        echo "bind-allowed"
+        ok=0
+    else
+        echo "bind-refused"
+    fi
+    if ! kif_arm chrdev_open virt_kif_open vfs_read virt_kif_read; then
+        kif_off
+        unload virt_kif
+        finish
+        return
+    fi
+    echo "+ head -c 4 /dev/virt_kif > /tmp/kif_out"
+    head -c 4 /dev/virt_kif > /tmp/kif_out
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ head -n 20 $TR/trace"
+    head -n 20 "$TR/trace"
+    hits=$(kif_hits)
+    kif_off
+    echo "vfs-hits:$hits"
+    vfs_expect=" chrdev_open virt_kif_open vfs_read virt_kif_read"
+    if [ "$hits" = "$vfs_expect" ]; then
+        echo "vfs order ok"
+    else
+        echo "vfs order mismatch"
+        echo "expect:$vfs_expect"
+        ok=0
+    fi
+    echo "+ cat /tmp/kif_out"
+    data=$(cat /tmp/kif_out)
+    printf '%s\n' "$data"
+    if [ "$data" = "kif" ]; then
+        echo "read ok"
+    else
+        echo "read mismatch"
+        ok=0
+    fi
+    unload virt_kif
+    run "dmesg | grep virtkif:"
+    want "bus_remove virtkif-sensor"
+    want "driver_remove virtkif-sensor"
+    want "release virtkif-sensor"
+    want "bus_unregister"
+    finish
+}
+
 lab_main() {
     case "$1" in
         all)
@@ -658,6 +839,7 @@ lab_main() {
             lab_learn01; lab_learn02; lab_learn03; lab_learn04
             lab_learn05; lab_learn06; lab_learn07
             lab_kernel01
+            lab_kernel02
             ;;
         ch01|ch01_kernel_basics) lab_ch01 ;;
         ch02|ch02_char_basic) lab_ch02 ;;
@@ -736,6 +918,7 @@ lab_main() {
         learn06|learn/06_dma|learn/06) lab_learn06 ;;
         learn07|learn/07_debug|learn/07) lab_learn07 ;;
         kernel01|kernel/01|kernel/01_driver_framework) lab_kernel01 ;;
+        kernel02|kernel/02|kernel/02_kernel_interface) lab_kernel02 ;;
         *)
             echo "未知章节: $1"
             fail "lab" "unknown chapter $1"

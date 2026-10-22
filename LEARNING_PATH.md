@@ -9,6 +9,7 @@
 具体驱动在 `ch*` 和 `learn/`。要拆操作系统怎么管理驱动，从 `kernel/` 读，不按章节编号插进去。
 
 1. `kernel/01_driver_framework`：5.15 `drivers/base` 的 `bus_type`、`device`、`device_driver`。先注册总线和两台设备，再注册驱动。匹配上的设备走 `bus->probe` 再进驱动的 probe；另一台 `match` 返回 0。`/sys/bus/lddfw/trace` 记录这个顺序。
+2. `kernel/02_kernel_interface`：同一条绑定路径上的内核函数，以及字符设备的 `file_operations`。ftrace 里要看到 `really_probe` 调用总线 probe、`chrdev_open` 调用驱动的 open、`vfs_read` 调用驱动的 read。
 
 ## 1. 框架和字符设备
 

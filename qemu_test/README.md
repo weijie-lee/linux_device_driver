@@ -161,8 +161,8 @@ run_qemu.sh                               ├── 输出 [PASS]/[FAIL]
 
 | 命令 | 检查什么 | 项数 |
 |------|---------|------|
-| `docker run --rm ldd-lab test`（`init.sh`） | 每个模块 `insmod`，再看设备节点、sysfs 或网卡；`rmmod` 失败不算失败。`learn/` 的 7 个实验、`hardcode/` 和 `kernel/01` 做功能检查 | 79 |
-| `docker run --rm ldd-lab chapter all`（`lab.sh`） | 每章打印命令和回显。`rmmod` 失败、期望字样缺失、设备节点不是字符设备或块设备，都算失败。`kernel01` 还要求 trace 整行一致 | 77 |
+| `docker run --rm ldd-lab test`（`init.sh`） | 每个模块 `insmod`，再看设备节点、sysfs 或网卡；`rmmod` 失败不算失败。`learn/` 的 7 个实验、`hardcode/`、`kernel/01` 和 `kernel/02` 做功能检查 | 80 |
+| `docker run --rm ldd-lab chapter all`（`lab.sh`） | 每章打印命令和回显。`rmmod` 失败、期望字样缺失、设备节点不是字符设备或块设备，都算失败。`kernel01` 要求 trace 整行一致，`kernel02` 要求 ftrace 顺序一致 | 78 |
 
 每一章的命令、回显和成功判据写在该章 README 的「在镜像里复现」里。`ch02`、`ch03`、`ch05`、`ch06`、`ch08` 还会运行各自 `tests/` 里的用户态程序，要求 `FAIL: 0`。`ch21`–`ch68` 多数只确认模块加载后 probe 建出了自己的节点并且能卸载，没有逐个驱动去做读写。
 
@@ -223,5 +223,5 @@ CI（`.github/workflows/docker-validation.yml`）在 `ubuntu-22.04` 上构建镜
 | 客户机内核 | Ubuntu 5.15.0-173-generic |
 | QEMU | 6.2.0（镜像内） |
 | busybox | 静态链接（镜像内） |
-| `test` | PASS 79 / FAIL 0 |
-| `chapter all` | PASS 77 / FAIL 0 |
+| `test` | PASS 80 / FAIL 0 |
+| `chapter all` | PASS 78 / FAIL 0 |

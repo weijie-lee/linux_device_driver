@@ -637,6 +637,111 @@ else
     fail "kernel01_framework" "$(cat /tmp/insmod_err)"
 fi
 
+echo "--- kernel/02 kernel interface ---"
+TR=/sys/kernel/tracing
+if [ ! -f "$TR/trace" ]; then
+    TR=/sys/kernel/debug/tracing
+fi
+kif_arm() {
+    echo 0 > "$TR/tracing_on"
+    echo nop > "$TR/current_tracer"
+    echo function > "$TR/current_tracer" || return 1
+    first=1
+    for fn in "$@"; do
+        if [ "$first" -eq 1 ]; then
+            echo "$fn" > "$TR/set_ftrace_filter" || return 1
+            first=0
+        else
+            echo "$fn" >> "$TR/set_ftrace_filter" || return 1
+        fi
+    done
+    echo > "$TR/trace"
+    echo 1 > "$TR/tracing_on"
+    return 0
+}
+kif_hits() {
+    hits=""
+    while IFS= read -r line; do
+        case "$line" in
+            *": kernfs_fop_write_iter <-"*) hits="$hits kernfs_fop_write_iter" ;;
+            *": sysfs_kf_write <-"*) hits="$hits sysfs_kf_write" ;;
+            *": bus_attr_store <-"*) hits="$hits bus_attr_store" ;;
+            *": virt_kif_bind_store <-"*) hits="$hits virt_kif_bind_store" ;;
+            *": device_add <-"*) hits="$hits device_add" ;;
+            *": virt_kif_uevent <-"*) hits="$hits virt_kif_uevent" ;;
+            *": bus_probe_device <-"*) hits="$hits bus_probe_device" ;;
+            *": device_initial_probe <-"*) hits="$hits device_initial_probe" ;;
+            *": virt_kif_match <-"*) hits="$hits virt_kif_match" ;;
+            *": driver_probe_device <-"*) hits="$hits driver_probe_device" ;;
+            *": really_probe <-"*) hits="$hits really_probe" ;;
+            *": virt_kif_bus_probe <-"*) hits="$hits virt_kif_bus_probe" ;;
+            *": virt_kif_driver_probe <-"*) hits="$hits virt_kif_driver_probe" ;;
+            *": chrdev_open <-"*) hits="$hits chrdev_open" ;;
+            *": virt_kif_open <-"*) hits="$hits virt_kif_open" ;;
+            *": vfs_read <-"*) hits="$hits vfs_read" ;;
+            *": virt_kif_read <-"*) hits="$hits virt_kif_read" ;;
+        esac
+    done < "$TR/trace"
+    echo "$hits"
+}
+kif_off() {
+    echo 0 > "$TR/tracing_on" 2>/dev/null
+    echo nop > "$TR/current_tracer" 2>/dev/null
+    echo 1 > "$TR/tracing_on" 2>/dev/null
+}
+safe_insmod "$MODDIR/kernel_02_kernel_interface_virt_kif.ko"
+if [ $? -eq 0 ] && [ -f "$TR/trace" ] && [ -c /dev/virt_kif ]; then
+    bind_expect=" kernfs_fop_write_iter sysfs_kf_write bus_attr_store virt_kif_bind_store device_add virt_kif_uevent bus_probe_device device_initial_probe virt_kif_match driver_probe_device really_probe virt_kif_bus_probe virt_kif_driver_probe virt_kif_uevent"
+    vfs_expect=" chrdev_open virt_kif_open vfs_read virt_kif_read"
+    cb_expect="bus_register > uevent virtkif-sensor > match virtkif-sensor 1 > bus_probe virtkif-sensor > driver_probe virtkif-sensor > uevent virtkif-sensor"
+    if kif_arm kernfs_fop_write_iter sysfs_kf_write bus_attr_store \
+        virt_kif_bind_store device_add virt_kif_uevent bus_probe_device \
+        device_initial_probe virt_kif_match driver_probe_device really_probe \
+        virt_kif_bus_probe virt_kif_driver_probe && \
+       echo 1 > /sys/bus/virtkif/bind 2>/tmp/bind_err; then
+        echo 0 > "$TR/tracing_on"
+        bind_hits=$(kif_hits)
+        kif_off
+        cb=$(cat /sys/bus/virtkif/trace 2>/dev/null)
+        bd=$(cat /sys/bus/virtkif/devices/virtkif-sensor/bound 2>/dev/null)
+        if echo 1 > /sys/bus/virtkif/bind 2>/dev/null; then
+            again=1
+        else
+            again=0
+        fi
+        if kif_arm chrdev_open virt_kif_open vfs_read virt_kif_read; then
+            head -c 4 /dev/virt_kif > /tmp/kif_out
+            echo 0 > "$TR/tracing_on"
+            vfs_hits=$(kif_hits)
+            kif_off
+        else
+            vfs_hits=""
+            kif_off
+        fi
+        data=$(cat /tmp/kif_out 2>/dev/null)
+        safe_rmmod virt_kif
+        if [ "$bind_hits" = "$bind_expect" ] && [ "$cb" = "$cb_expect" ] && \
+           [ "$bd" = "1" ] && [ "$again" = "0" ] && \
+           [ "$vfs_hits" = "$vfs_expect" ] && [ "$data" = "kif" ] && \
+           ! lsmod | grep -q "^virt_kif" && \
+           dmesg | grep -q "virtkif: bus_remove virtkif-sensor" && \
+           dmesg | grep -q "virtkif: driver_remove virtkif-sensor" && \
+           dmesg | grep -q "virtkif: release virtkif-sensor" && \
+           dmesg | grep -q "virtkif: bus_unregister"; then
+            pass "kernel02_interface"
+        else
+            fail "kernel02_interface" "bind=[$bind_hits] vfs=[$vfs_hits] cb=[$cb] bound=$bd again=$again data=$data"
+        fi
+    else
+        kif_off
+        fail "kernel02_interface" "arm or bind: $(cat /tmp/bind_err 2>/dev/null)"
+        safe_rmmod virt_kif
+    fi
+else
+    kif_off
+    fail "kernel02_interface" "$(cat /tmp/insmod_err)"
+fi
+
 # ── 汇总 ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"
