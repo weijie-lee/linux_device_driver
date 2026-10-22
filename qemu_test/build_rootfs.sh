@@ -241,6 +241,7 @@ declare -A KO_MAP=(
     ["learn/07_debug"]="virt_debug"
     ["hardcode"]="hardcode_samples"
     ["kernel/01_driver_framework"]="virt_framework"
+    ["kernel/02_kernel_interface"]="virt_kif"
 )
 
 for ch_dir in "${!KO_MAP[@]}"; do

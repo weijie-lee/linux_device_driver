@@ -12,11 +12,11 @@
 | --- | --- | --- |
 | 主线 | `ch00`、`ch01`–`ch06`、`hardcode/`、`learn/`、`ch07`–`ch20` | 按 [下面的顺序](#学习顺序) 读和做 |
 | 索引 | `ch21`–`ch68` | 要查某个子系统的注册函数时再打开，不必按编号学完 |
-| 内核 | `kernel/` | 和具体驱动分开。先拆 `drivers/base` 的总线、设备和绑定，见 `kernel/01_driver_framework` |
+| 内核 | `kernel/` | 和具体驱动分开。`kernel/01` 拆总线、设备和绑定，`kernel/02` 用 ftrace 看内核走进这些回调和 `file_operations` 的路径 |
 
-顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/`、`learn/` 的 7 个模块，以及 `kernel/01_driver_framework`。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
+顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/`、`learn/` 的 7 个模块，以及 `kernel/01_driver_framework`、`kernel/02_kernel_interface`。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
 
-客户机内核是 Ubuntu `5.15.0-173-generic`。QEMU 里有两套检查：冒烟套件 **79 项**，章节实验 **77 项**，最近一次都是 0 项失败，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。GitHub Actions 每次推送和 PR 都会跑这两套。多出来的一项是 `kernel/01_driver_framework`。
+客户机内核是 Ubuntu `5.15.0-173-generic`。QEMU 里有两套检查：冒烟套件 **80 项**，章节实验 **78 项**，最近一次都是 0 项失败，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。GitHub Actions 每次推送和 PR 都会跑这两套。内核主线占其中的 `kernel/01` 和 `kernel/02`。
 
 ## 读之前要知道的三件事
 
@@ -58,7 +58,7 @@ docker run --rm -it ldd-lab
 docker run --rm ldd-lab test
 ```
 
-只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01`，或 `all`。
+只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01`、`kernel02`，或 `all`。
 
 ```bash
 docker run --rm ldd-lab chapter ch02
@@ -121,7 +121,7 @@ bash qemu_test/run_qemu.sh --interactive
 ```
 linux_device_driver/
 ├── ch00_framework/            # 框架总览，只读，不编译
-├── kernel/                    # 内核主线，先拆 drivers/base
+├── kernel/                    # 内核主线：驱动框架，以及和内核的接口
 ├── ch01_kernel_basics/        # container_of、链表、kfifo
 ├── ch02_char_basic/           # globalmem：cdev、read/write
 ├── ch03_char_advanced/        # globalfifo：阻塞、poll、fasync、ioctl
@@ -153,6 +153,8 @@ linux_device_driver/
 具体驱动仍按下面的编号读。要看操作系统怎样把设备和驱动绑在一起，打开 `kernel/`，不要在 `ch*` 里再找一份。
 
 `kernel/01_driver_framework` 对的是 5.15 `drivers/base`：`bus_register`、`device_add`、`driver_attach`、`really_probe`。模块自己注册一条总线，一台设备匹配后进入 probe，另一台在 `match` 返回 0 时停住。客户机里 `/sys/bus/lddfw/trace` 应是 `bus_register > uevent lddfw-sensor > uevent lddfw-other > match lddfw-sensor 1 > bus_probe lddfw-sensor > driver_probe lddfw-sensor > uevent lddfw-sensor > match lddfw-other 0`。`platform` 和 PCI 是这条总线上的两种特例，分别在 `ch06` 和 `ch19`。
+
+`kernel/02_kernel_interface` 把这条路径上的内核函数也打出来。写 `/sys/bus/virtkif/bind` 时，ftrace 要依次出现 `kernfs_fop_write_iter`、`device_add`、`really_probe`、`virt_kif_bus_probe`、`virt_kif_driver_probe`。读 `/dev/virt_kif` 时，要依次出现 `chrdev_open`、`virt_kif_open`、`vfs_read`、`virt_kif_read`。
 
 ### 2. 字符设备到 platform：`ch01`–`ch06`
 

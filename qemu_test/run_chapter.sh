@@ -4,7 +4,7 @@ set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
     echo "用法: bash qemu_test/run_chapter.sh <章节> [run_qemu.sh 的选项]" >&2
-    echo "  章节例子: ch01  ch21  learn01  hardcode  kernel01  all" >&2
+    echo "  章节例子: ch01  ch21  learn01  hardcode  kernel01  kernel02  all" >&2
     exit 2
 fi
 

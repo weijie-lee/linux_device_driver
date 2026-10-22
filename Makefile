@@ -82,7 +82,8 @@ CHAPTERS := \
 	learn/05_pm \
 	learn/06_dma \
 	learn/07_debug \
-	kernel/01_driver_framework
+	kernel/01_driver_framework \
+	kernel/02_kernel_interface
 
 .PHONY: all clean test lab help $(CHAPTERS)
 
@@ -119,6 +120,7 @@ help:
 	@echo "  make test         在 QEMU 客户机里加载全部模块并检查"
 	@echo "  make lab CHAPTER=ch21  在客户机里跑一章，打印命令和回显"
 	@echo "  make lab CHAPTER=kernel01  跑驱动框架拆解"
+	@echo "  make lab CHAPTER=kernel02  跑驱动和内核的接口"
 	@echo "  make ch02_char_basic  编译指定章节"
 	@echo ""
 	@echo "章节列表："
