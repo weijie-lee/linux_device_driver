@@ -174,15 +174,34 @@ static const struct file_operations regmap_demo_fops = {
 static int __init regmap_demo_init(void)
 {
 	struct regmap_demo_priv *priv;
+	struct regmap_config cfg = regmap_demo_config;
+	struct reg_default *defs;
 	int ret, i;
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
+	defs = kcalloc(REG_COUNT, sizeof(*defs), GFP_KERNEL);
+	if (!defs) {
+		kfree(priv);
+		return -ENOMEM;
+	}
+
 	/* 初始化模拟寄存器：寄存器 N 的初始值为 N * 0x10 */
-	for (i = 0; i < REG_COUNT; i++)
+	for (i = 0; i < REG_COUNT; i++) {
 		priv->regs[i] = i * 0x10;
+		defs[i].reg = i;
+		defs[i].def = i * 0x10;
+	}
+
+	/*
+	 * REGCACHE_FLAT 没有 reg_defaults 时，缓存数组全是 0，
+	 * 第一次读到的是缓存里的 0，而不是 reg_read 返回的硬件值。
+	 * regmap_init 会复制这张表，init 结束前即可释放。
+	 */
+	cfg.reg_defaults = defs;
+	cfg.num_reg_defaults = REG_COUNT;
 
 	/*
 	 * 初始化虚拟 device，供 regmap debugfs 使用
@@ -198,7 +217,8 @@ static int __init regmap_demo_init(void)
 	 * 真实 I2C 驱动使用：regmap_init_i2c(client, &config)
 	 * 真实 SPI 驱动使用：regmap_init_spi(spi, &config)
 	 */
-	priv->regmap = regmap_init(&priv->dev, NULL, priv, &regmap_demo_config);
+	priv->regmap = regmap_init(&priv->dev, NULL, priv, &cfg);
+	kfree(defs);
 	if (IS_ERR(priv->regmap)) {
 		ret = PTR_ERR(priv->regmap);
 		pr_err("%s: regmap_init failed: %d\n", DRIVER_NAME, ret);

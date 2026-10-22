@@ -9,8 +9,9 @@
  *   TC05: 写入超出缓冲区大小的数据（边界测试）
  *   TC06: 多次 open/close（并发安全）
  *
- * 编译：gcc -o test_globalmem test_globalmem.c
- * 运行：sudo ./test_globalmem
+ * 编译：gcc -static -o test_globalmem test_globalmem.c
+ * 运行：在装了 globalmem 的 QEMU 客户机里直接执行（`docker run --rm ldd-lab chapter ch02`）。
+ *       驱动创建的节点是 /dev/global_mem_0 到 /dev/global_mem_3。
  */
 
 #include <stdio.h>
@@ -19,7 +20,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define DEVICE      "/dev/globalmem"
+#ifndef DEVICE
+#define DEVICE      "/dev/global_mem_0"
+#endif
 #define MEM_SIZE    0x1000  /* 4096 bytes */
 
 static int pass_count = 0, fail_count = 0;
@@ -40,7 +43,7 @@ int main(void)
 	/* TC01: open */
 	printf("[TC01] open/close\n");
 	fd = open(DEVICE, O_RDWR);
-	ASSERT(fd >= 0, "open /dev/globalmem");
+	ASSERT(fd >= 0, "open " DEVICE);
 	if (fd < 0) { perror("open"); return 1; }
 	close(fd);
 	fd = open(DEVICE, O_RDWR);

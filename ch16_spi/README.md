@@ -28,7 +28,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch16
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch16_spi_spi_master.ko
@@ -37,6 +37,8 @@ insmod ok
 insmod ok
 + ls /dev/spi_virt
 /dev/spi_virt
++ test -c /dev/spi_virt -o -b /dev/spi_virt
+node ok
 + echo sp > /dev/spi_virt
 + head -c 2 /dev/spi_virt
 sp
@@ -51,7 +53,7 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch16_spi`
-- `/dev/spi_virt` 存在，并且读回的前两个字节是 `sp`。
+- `/dev/spi_virt` 存在且 `node ok`，并且读回的前两个字节是 `sp`。
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 

@@ -53,6 +53,7 @@ static struct class *seconds_class;
 struct second_dev {
 	struct cdev cdev;
 	atomic_t counter;		/* 原子计数器：已过秒数 */
+	atomic_t busy;			/* 1 表示已经有人打开，定时器只有一个 */
 	struct timer_list s_timer;	/* 内核定时器：每秒触发一次 */
 };
 
@@ -93,10 +94,14 @@ static void second_timer_handler(struct timer_list *unused)
  * 每次打开设备时重置计数器并启动新的定时器。
  *
  * 注意：本驱动使用全局 second_devp，不支持多进程同时打开。
- * 生产代码应在此处加引用计数或互斥锁防止并发打开。
+ * 只有一个 timer_list，已经打开时再 add_timer() 会把同一个节点重复挂上链表，
+ * 定时器轮会在 LIST_POISON 上崩溃。所以只允许一个打开者，第二次返回 -EBUSY。
  */
 static int second_open(struct inode *inode, struct file *filp)
 {
+	if (atomic_cmpxchg(&second_devp->busy, 0, 1))
+		return -EBUSY;
+
 	/* 初始化定时器，绑定回调函数，flags 为 0（无特殊标志） */
 	timer_setup(&second_devp->s_timer, second_timer_handler, 0);
 
@@ -124,6 +129,7 @@ static int second_open(struct inode *inode, struct file *filp)
 static int second_release(struct inode *inode, struct file *filp)
 {
 	del_timer_sync(&second_devp->s_timer);	/* 等待回调完成后停止定时器 */
+	atomic_set(&second_devp->busy, 0);
 	pr_info("second: device closed, timer stopped\n");
 	return 0;
 }

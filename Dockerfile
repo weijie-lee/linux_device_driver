@@ -47,5 +47,10 @@ COPY . .
 
 RUN chmod 755 /usr/local/bin/ldd-lab
 
+# 模块在构建镜像时就编好，docker run ... chapter 不必每次重新编译。
+RUN make all > /tmp/make.log 2>&1 \
+    || { tail -n 80 /tmp/make.log; exit 1; } \
+    && rm -f /tmp/make.log
+
 ENTRYPOINT ["/usr/local/bin/ldd-lab"]
 CMD ["shell"]

@@ -9,7 +9,7 @@
 # 选项：
 #   --output-dir <dir>   指定输出目录（默认：./qemu_test/output）
 #   --kernel <path>      指定内核 vmlinuz 路径（默认自动检测）
-#   --timeout <secs>     QEMU 测试超时时间（默认：180 秒）
+#   --timeout <secs>     QEMU 测试超时时间（默认：600 秒）
 #   --skip-build         跳过驱动编译，直接使用已有 .ko 文件
 #   --kvm                尝试启用 KVM 加速
 #   --interactive        交互模式（调试用，不自动等待）

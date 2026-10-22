@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 DRIVER="globalfifo"
-DEVICE="/dev/globalfifo"
+DEVICE="/dev/global_mem_0"
 echo "=== Ch03 Globalfifo Character Device Test ==="
 lsmod | grep -q "${DRIVER}" && rmmod "${DRIVER}" 2>/dev/null || true
 echo "[STEP 1] Building..."

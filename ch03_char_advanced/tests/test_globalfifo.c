@@ -8,8 +8,9 @@
  *   TC04: poll/select 可读可写状态检测
  *   TC05: FIFO 清空 ioctl
  *
- * 编译：gcc -o test_globalfifo test_globalfifo.c
- * 运行：sudo ./test_globalfifo
+ * 编译：gcc -static -o test_globalfifo test_globalfifo.c
+ * 运行：在装了 globalfifo 的 QEMU 客户机里直接执行（`docker run --rm ldd-lab chapter ch03`）。
+ *       驱动创建的节点是 /dev/global_mem_0 到 /dev/global_mem_3。
  */
 
 #include <stdio.h>
@@ -21,9 +22,11 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 
-#define DEVICE      "/dev/globalfifo"
+#ifndef DEVICE
+#define DEVICE      "/dev/global_mem_0"
+#endif
 #define FIFO_SIZE   0x1000  /* 4096 bytes */
-#define FIFO_CLEAR  0x1     /* ioctl 清空命令 */
+#define FIFO_CLEAR  _IO('g', 0)  /* 与 globalfifo.c 里的 MEM_CLEAR 相同 */
 
 static int pass_count = 0, fail_count = 0;
 #define ASSERT(cond, msg) do { \
@@ -44,7 +47,7 @@ int main(void)
 
 	fd    = open(DEVICE, O_RDWR);
 	fd_nb = open(DEVICE, O_RDWR | O_NONBLOCK);
-	ASSERT(fd >= 0 && fd_nb >= 0, "open /dev/globalfifo (blocking + nonblocking)");
+	ASSERT(fd >= 0 && fd_nb >= 0, "open " DEVICE " (blocking + nonblocking)");
 	if (fd < 0) { perror("open"); return 1; }
 
 	/* TC01: 基本 read/write */

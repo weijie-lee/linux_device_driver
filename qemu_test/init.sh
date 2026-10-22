@@ -122,13 +122,13 @@ safe_insmod "$MODDIR/ch02_char_basic_globalmem.ko"
 if [ $? -eq 0 ]; then
     sleep 1
     DEV=/dev/global_mem_0
-    if [ -e "$DEV" ]; then
+    if [ -c "$DEV" ]; then
         echo "test_data" > "$DEV" 2>/dev/null
         DATA=$(head -c 9 "$DEV" 2>/dev/null)
         echo "$DATA" | grep -q "test_data" && \
-            pass "ch02_globalmem rw" || pass "ch02_globalmem insmod"
+            pass "ch02_globalmem rw" || fail "ch02_globalmem" "read back: $DATA"
     else
-        pass "ch02_globalmem insmod"
+        fail "ch02_globalmem" "$DEV is not a character device"
     fi
     safe_rmmod globalmem
 else
@@ -141,13 +141,13 @@ safe_insmod "$MODDIR/ch03_char_advanced_globalfifo.ko"
 if [ $? -eq 0 ]; then
     sleep 1
     DEV=/dev/global_mem_0
-    if [ -e "$DEV" ]; then
+    if [ -c "$DEV" ]; then
         echo "fifo_test" > "$DEV" 2>/dev/null
         DATA=$(head -c 9 "$DEV" 2>/dev/null)
         echo "$DATA" | grep -q "fifo_test" && \
-            pass "ch03_globalfifo rw" || pass "ch03_globalfifo insmod"
+            pass "ch03_globalfifo rw" || fail "ch03_globalfifo" "read back: $DATA"
     else
-        pass "ch03_globalfifo insmod"
+        fail "ch03_globalfifo" "$DEV is not a character device"
     fi
     safe_rmmod globalfifo
 else

@@ -12,16 +12,17 @@
 insmod second.ko
   alloc_chrdev_region → cdev_add → class_create → device_create("/dev/second")
 open
+  atomic_cmpxchg(busy, 0, 1)：已经有人打开则返回 -EBUSY
   timer_setup + add_timer，counter = 0
 定时器回调（每秒）
   atomic_inc + mod_timer
 read
   put_user(counter)
 release
-  del_timer_sync
+  del_timer_sync，busy = 0
 ```
 
-本驱动没有打开计数。定时器还活着时再 `open` 一次会把同一个 `timer_list` 重复挂上链表。实验只打开一次，等两秒，从同一个文件描述符里读。
+只有一个 `timer_list`。定时器还活着时再 `add_timer` 会把同一个节点重复挂上链表，定时器轮在 `LIST_POISON` 上崩溃。所以 `open` 用 `busy` 只放行一个打开者，第二次返回 `-EBUSY`。实验打开一次，等两秒，从同一个文件描述符里读，并且在它还开着时再试一次 `open`，应当被拒绝。
 
 ## 在镜像里复现
 
@@ -32,15 +33,19 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch04
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch04_timer_second.ko
 insmod ok
 + ls /dev/second
 /dev/second
++ test -c /dev/second -o -b /dev/second
+node ok
 + exec 3<>/dev/second
 + sleep 2
++ if ( : < /dev/second ) 2>/dev/null; then echo second-open-allowed; else echo second-open-refused; fi
+second-open-refused
 + head -c 4 <&3 > /tmp/sec
 + od -An -tu4 /tmp/sec
           1
@@ -53,6 +58,8 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch04_second`
+- `node ok`
+- 第一个文件描述符还开着时，第二次 `open` 被拒绝，回显 `second-open-refused`
 - 读到的秒数大于等于 1，并且 `rmmod second` 打印 `rmmod ok`。
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：

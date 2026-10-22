@@ -83,7 +83,7 @@ CHAPTERS := \
 	learn/06_dma \
 	learn/07_debug
 
-.PHONY: all clean test help $(CHAPTERS)
+.PHONY: all clean test lab help $(CHAPTERS)
 
 all: $(CHAPTERS)
 
@@ -101,23 +101,13 @@ clean:
 		fi; \
 	done
 
-# 运行所有章节的自动化测试
+# 编译全部模块，在 5.15 的 QEMU 客户机里加载并检查（模块不在宿主机上 insmod）
 test:
-	@PASS=0; FAIL=0; \
-	for dir in $(CHAPTERS); do \
-		if [ -f $$dir/tests/test.sh ]; then \
-			echo ""; \
-			echo "=== Testing: $$dir ==="; \
-			if cd $$dir && sudo bash tests/test.sh; then \
-				PASS=$$((PASS+1)); \
-			else \
-				FAIL=$$((FAIL+1)); \
-			fi; \
-			cd ..; \
-		fi; \
-	done; \
-	echo ""; \
-	echo "=== Test Summary: PASS=$$PASS  FAIL=$$FAIL ==="
+	bash qemu_test/qemu_test_all.sh
+
+# 每章的命令、回显和成功判据：make lab CHAPTER=ch21，缺省跑全部章节
+lab:
+	bash qemu_test/run_chapter.sh $(or $(CHAPTER),all)
 
 help:
 	@echo "Linux 设备驱动开发实践仓库"
@@ -125,7 +115,8 @@ help:
 	@echo "用法："
 	@echo "  make all          编译所有章节"
 	@echo "  make clean        清理所有编译产物"
-	@echo "  make test         运行所有章节的自动化测试"
+	@echo "  make test         在 QEMU 客户机里加载全部模块并检查"
+	@echo "  make lab CHAPTER=ch21  在客户机里跑一章，打印命令和回显"
 	@echo "  make ch02_char_basic  编译指定章节"
 	@echo ""
 	@echo "章节列表："

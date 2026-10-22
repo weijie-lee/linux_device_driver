@@ -26,7 +26,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch17
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch17_block_vmem_disk.ko
@@ -45,6 +45,8 @@ loop6
 loop7
 vmem_disk0
 vmem_disk1
++ test -c /dev/vmem_disk0 -o -b /dev/vmem_disk0
+node ok
 + rmmod vmem_disk
 rmmod ok
 [PASS] ch17_block
@@ -54,7 +56,7 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch17_block`
-- `/dev/vmem_disk0` 或 `/sys/block` 里能看到 `vmem_disk`。
+- `/dev/vmem_disk0` 是块设备（`node ok`），`/sys/block` 里能看到 `vmem_disk`。
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 

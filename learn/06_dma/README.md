@@ -1,5 +1,7 @@
 # 一致性内存和流式 DMA
 
+## 代码知识点
+
 `ch12_dma` 的代码只演示 `kmalloc` / `vmalloc`。DMA 映射在这里。
 
 设备是一个平台设备，probe 里设置 64 位 `dma_mask`，然后做三次映射并立刻解除：
@@ -12,6 +14,19 @@
 
 成功后 `/sys/devices/platform/virt_dma/report` 为 `coherent:ok stream:ok sg:ok`。映射本身不留到 remove，避免卸载时还握着总线地址。
 
+## 代码架构
+
+```
+probe
+  dma_set_mask_and_coherent(64 位)
+  dma_alloc_coherent       一页，CPU 和设备同时可见 → 写入、读回 → dma_free_coherent
+  kmalloc + dma_map_single → dma_sync_single_for_device → dma_sync_single_for_cpu → dma_unmap_single
+  alloc_page + scatterlist → dma_map_sg → dma_unmap_sg
+  report = coherent:ok stream:ok sg:ok
+remove
+  释放属性，不再持有总线地址
+```
+
 ## 在镜像里复现
 
 模块按 `5.15.0-173-generic` 编译，只在 QEMU 客户机里 `insmod`。容器里的 `uname -r` 是宿主机内核，不要在容器里加载这些 `.ko`。
@@ -21,7 +36,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter learn06
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/learn_06_dma_virt_dma.ko

@@ -325,7 +325,7 @@ docker build -t ldd-lab .
 docker run --rm ldd-lab chapter ch02
 ```
 
-`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。
+`chapter` 会编译并打包 initramfs，启动客户机，执行下面这些命令，并把回显打到终端。下面这份回显来自镜像里的一次实际运行。方括号里的时间戳、内存地址和 `lsmod` 里的数字每次都不同，对照命令和关键字即可。
 
 ```
 + insmod /lib/modules/driver_test/ch02_char_basic_globalmem.ko
@@ -335,9 +335,31 @@ insmod ok
 /dev/global_mem_1
 /dev/global_mem_2
 /dev/global_mem_3
++ test -c /dev/global_mem_0 -o -b /dev/global_mem_0
+node ok
 + echo test_data > /dev/global_mem_0
 + head -c 9 /dev/global_mem_0
 test_data
++ /bin/test_globalmem
+=== Ch02 Globalmem Character Device Test ===
+
+[TC01] open/close
+  [PASS] open /dev/global_mem_0
+[TC02] write
+  [PASS] write returns correct byte count
+[TC03] read
+  [PASS] read returns correct byte count
+  [PASS] read data matches written data
+[TC04] lseek
+  [PASS] read after lseek returns 9 bytes
+  [PASS] lseek read content correct
+[TC05] Large write (boundary test)
+  [PASS] write MEM_SIZE bytes succeeds
+[TC06] Multiple open
+  [PASS] second open succeeds
+
+=== Test Summary ===
+PASS: 8  FAIL: 0
 + rmmod globalmem
 rmmod ok
 [PASS] ch02_globalmem
@@ -347,7 +369,11 @@ rmmod ok
 
 - 这条 `docker run` 的退出码是 0
 - 回显里有 `[PASS] ch02_globalmem`
-- `head -c 9 /dev/global_mem_0` 是 `test_data`。设备节点是 `global_mem_0` 到 `global_mem_3`，不是 `/dev/globalmem`。
+- `ls` 列出 `global_mem_0` 到 `global_mem_3`，并且 `node ok`（它们是字符设备，不是普通文件）
+- `head -c 9 /dev/global_mem_0` 是 `test_data`
+- 用户态程序 `test_globalmem` 的结尾是 `PASS: 8  FAIL: 0`
+
+设备节点是 `global_mem_N`，不是 `/dev/globalmem`。
 
 想把 `qemu_test/output/qemu_serial.log` 留在本机时，把仓库挂进容器：
 
