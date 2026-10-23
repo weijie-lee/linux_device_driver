@@ -586,7 +586,7 @@ lab_learn07() {
     finish
 }
 
-kif_off() {
+ft_off() {
     echo "+ echo 0 > $TR/tracing_on"
     echo 0 > "$TR/tracing_on"
     echo "+ echo nop > $TR/current_tracer"
@@ -594,7 +594,7 @@ kif_off() {
     echo 1 > "$TR/tracing_on"
 }
 
-kif_arm() {
+ft_arm() {
     echo "+ echo 0 > $TR/tracing_on"
     echo 0 > "$TR/tracing_on"
     echo "+ echo nop > $TR/current_tracer"
@@ -659,6 +659,148 @@ kif_hits() {
         esac
     done < "$TR/trace"
     echo "$hits"
+}
+
+# ── kernel/04 以后的章节共用 ──────────────────────────────────────────────────
+
+tr_ready() {
+    TR=/sys/kernel/tracing
+    [ -f "$TR/trace" ] || TR=/sys/kernel/debug/tracing
+    [ -f "$TR/trace" ] && return 0
+    echo "tracefs missing"
+    ok=0
+    return 1
+}
+
+# 参数是 "模式=名字"。trace 的每一行按参数顺序做字面匹配，记下第一个匹配上的名字。
+ft_hits() {
+    hits=""
+    while IFS= read -r line; do
+        for spec in "$@"; do
+            case "$line" in
+                *"${spec%=*}"*) hits="$hits ${spec##*=}"; break ;;
+            esac
+        done
+    done < "$TR/trace"
+    echo "$hits"
+}
+
+# 窗口里还有别的任务的记录，回显只留匹配的行。
+ft_show() {
+    echo "+ grep -E '$1' $TR/trace"
+    grep -E "$1" "$TR/trace"
+}
+
+# function_graph 只展开 $1 这一个函数，深度 $2。
+fg_arm() {
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ echo nop > $TR/current_tracer"
+    echo nop > "$TR/current_tracer"
+    echo > "$TR/set_ftrace_filter"
+    echo "+ echo $1 > $TR/set_graph_function"
+    if ! echo "$1" > "$TR/set_graph_function" 2>/tmp/ft_err; then
+        echo "graph filter refused: $1 $(cat /tmp/ft_err)"
+        ok=0
+        return 1
+    fi
+    echo "+ echo $2 > $TR/max_graph_depth"
+    echo "$2" > "$TR/max_graph_depth"
+    echo "+ echo function_graph > $TR/current_tracer"
+    if ! echo function_graph > "$TR/current_tracer"; then
+        echo "function_graph refused"
+        ok=0
+        return 1
+    fi
+    echo "+ echo > $TR/trace"
+    echo > "$TR/trace"
+    echo "+ echo 1 > $TR/tracing_on"
+    echo 1 > "$TR/tracing_on"
+}
+
+fg_off() {
+    echo 0 > "$TR/tracing_on"
+    echo nop > "$TR/current_tracer"
+    echo > "$TR/set_graph_function"
+    echo 0 > "$TR/max_graph_depth"
+    echo 1 > "$TR/tracing_on"
+}
+
+# 事件跟踪，例如 ev_arm sched/sched_waking sched/sched_switch
+ev_arm() {
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ echo nop > $TR/current_tracer"
+    echo nop > "$TR/current_tracer"
+    echo > "$TR/set_event"
+    for ev in "$@"; do
+        echo "+ echo $ev >> $TR/set_event"
+        if ! echo "$ev" >> "$TR/set_event" 2>/tmp/ft_err; then
+            echo "event refused: $ev $(cat /tmp/ft_err)"
+            ok=0
+            return 1
+        fi
+    done
+    echo "+ echo > $TR/trace"
+    echo > "$TR/trace"
+    echo "+ echo 1 > $TR/tracing_on"
+    echo 1 > "$TR/tracing_on"
+}
+
+ev_off() {
+    echo 0 > "$TR/tracing_on"
+    echo > "$TR/set_event"
+    echo 1 > "$TR/tracing_on"
+}
+
+# $1 是空格分隔的记录。后面的名字要依次出现，中间可以夹着别的。
+in_order() {
+    rest=" $1 "
+    shift
+    for name in "$@"; do
+        case "$rest" in
+            *" $name "*) rest=" ${rest#*" $name "}" ;;
+            *) return 1 ;;
+        esac
+    done
+    return 0
+}
+
+expect_order() {
+    label="$1"
+    got="$2"
+    shift 2
+    echo "$label-hits:$got"
+    if in_order "$got" "$@"; then
+        echo "$label order ok"
+    else
+        echo "$label order mismatch"
+        echo "expect: $*"
+        ok=0
+    fi
+}
+
+expect_eq() {
+    if [ "$2" = "$3" ]; then
+        echo "$1 ok: $2"
+    else
+        echo "$1 mismatch: got [$2] want [$3]"
+        ok=0
+    fi
+}
+
+# 最多等 $1 秒，每 0.1 秒执行一次后面的命令，成功就返回 0。
+wait_for() {
+    n=$(($1 * 10))
+    shift
+    while [ "$n" -gt 0 ]; do
+        if eval "$@" >/dev/null 2>&1; then
+            return 0
+        fi
+        usleep 100000
+        n=$((n - 1))
+    done
+    return 1
 }
 
 lab_kernel01() {
@@ -728,11 +870,11 @@ lab_kernel02() {
     fi
     load "$MODDIR/kernel_02_kernel_interface_virt_kif.ko" || { finish; return; }
     node /dev/virt_kif
-    if ! kif_arm kernfs_fop_write_iter sysfs_kf_write bus_attr_store \
+    if ! ft_arm kernfs_fop_write_iter sysfs_kf_write bus_attr_store \
         virt_kif_bind_store device_add virt_kif_uevent bus_probe_device \
         device_initial_probe virt_kif_match driver_probe_device really_probe \
         virt_kif_bus_probe virt_kif_driver_probe; then
-        kif_off
+        ft_off
         unload virt_kif
         finish
         return
@@ -749,7 +891,7 @@ lab_kernel02() {
     echo "+ head -n 30 $TR/trace"
     head -n 30 "$TR/trace"
     hits=$(kif_hits)
-    kif_off
+    ft_off
     echo "bind-hits:$hits"
     bind_expect=" kernfs_fop_write_iter sysfs_kf_write bus_attr_store virt_kif_bind_store device_add virt_kif_uevent bus_probe_device device_initial_probe virt_kif_match driver_probe_device really_probe virt_kif_bus_probe virt_kif_driver_probe virt_kif_uevent"
     if [ "$hits" = "$bind_expect" ]; then
@@ -783,8 +925,8 @@ lab_kernel02() {
     else
         echo "bind-refused"
     fi
-    if ! kif_arm chrdev_open virt_kif_open vfs_read virt_kif_read; then
-        kif_off
+    if ! ft_arm chrdev_open virt_kif_open vfs_read virt_kif_read; then
+        ft_off
         unload virt_kif
         finish
         return
@@ -796,7 +938,7 @@ lab_kernel02() {
     echo "+ head -n 20 $TR/trace"
     head -n 20 "$TR/trace"
     hits=$(kif_hits)
-    kif_off
+    ft_off
     echo "vfs-hits:$hits"
     vfs_expect=" chrdev_open virt_kif_open vfs_read virt_kif_read"
     if [ "$hits" = "$vfs_expect" ]; then
@@ -839,8 +981,8 @@ lab_kernel03() {
     load "$MODDIR/kernel_03_driver_calls_virt_call.ko" || { finish; return; }
     node /dev/virt_call
     echo "+ printf ping > /dev/virt_call"
-    if ! kif_arm virt_call_write __check_object_size; then
-        kif_off
+    if ! ft_arm virt_call_write __check_object_size; then
+        ft_off
         unload virt_call
         finish
         return
@@ -852,7 +994,7 @@ lab_kernel03() {
     echo "+ head -n 20 $TR/trace"
     head -n 20 "$TR/trace"
     hits=$(kif_hits)
-    kif_off
+    ft_off
     echo "write-hits:$hits"
     write_expect=" virt_call_write check_object_size"
     if [ "$hits" = "$write_expect" ]; then
@@ -863,8 +1005,8 @@ lab_kernel03() {
         ok=0
     fi
     echo "+ head -c 4 /dev/virt_call > /tmp/call_out"
-    if ! kif_arm virt_call_read __check_object_size; then
-        kif_off
+    if ! ft_arm virt_call_read __check_object_size; then
+        ft_off
         unload virt_call
         finish
         return
@@ -875,7 +1017,7 @@ lab_kernel03() {
     echo "+ head -n 20 $TR/trace"
     head -n 20 "$TR/trace"
     hits=$(kif_hits)
-    kif_off
+    ft_off
     echo "read-hits:$hits"
     read_expect=" virt_call_read check_object_size"
     if [ "$hits" = "$read_expect" ]; then
@@ -922,6 +1064,7 @@ lab_main() {
             lab_kernel01
             lab_kernel02
             lab_kernel03
+            lab_kernel04; lab_kernel05; lab_kernel06; lab_kernel07
             ;;
         ch01|ch01_kernel_basics) lab_ch01 ;;
         ch02|ch02_char_basic) lab_ch02 ;;
@@ -1002,9 +1145,21 @@ lab_main() {
         kernel01|kernel/01|kernel/01_driver_framework) lab_kernel01 ;;
         kernel02|kernel/02|kernel/02_kernel_interface) lab_kernel02 ;;
         kernel03|kernel/03|kernel/03_driver_calls) lab_kernel03 ;;
+        kernel0[4-9]|kernel1[0-9]|kernel2[0-6])
+            if type "lab_$1" >/dev/null 2>&1; then
+                "lab_$1"
+            else
+                fail "$1" "lab_$1 not in /lab.d"
+            fi
+            ;;
         *)
             echo "未知章节: $1"
             fail "lab" "unknown chapter $1"
             ;;
     esac
 }
+
+# kernel/04 以后，每章的实验命令写在该章目录的 lab.sh 里，build_rootfs.sh 拷到 /lab.d/。
+for f in /lab.d/*.sh; do
+    [ -f "$f" ] && . "$f"
+done
