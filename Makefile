@@ -84,7 +84,13 @@ CHAPTERS := \
 	learn/07_debug \
 	kernel/01_driver_framework \
 	kernel/02_kernel_interface \
-	kernel/03_driver_calls
+	kernel/03_driver_calls \
+	kernel/04_user_paths \
+	kernel/05_sleep_wake \
+	kernel/06_irq_bottom \
+	kernel/07_lock_context \
+	kernel/08_pci_mmio \
+	kernel/09_msi_irq
 
 .PHONY: all clean test lab help $(CHAPTERS)
 

@@ -12,9 +12,9 @@
 | --- | --- | --- |
 | 主线 | `ch00`、`ch01`–`ch06`、`hardcode/`、`learn/`、`ch07`–`ch20` | 按 [下面的顺序](#学习顺序) 读和做 |
 | 索引 | `ch21`–`ch68` | 要查某个子系统的注册函数时再打开，不必按编号学完 |
-| 内核 | `kernel/` | 和具体驱动分开。`kernel/01` 拆总线、设备和绑定，`kernel/02` 用 ftrace 看内核走进这些回调，`kernel/03` 看驱动调用 `_copy_from_user` / `_copy_to_user` |
+| 内核 | `kernel/` | 和具体驱动分开。`kernel/01` 到 `kernel/03` 看绑定和 `copy_*_user`，`kernel/04` 到 `kernel/07` 看 ioctl/sysfs/proc、睡眠唤醒、中断下半部、锁和 soft lockup |
 
-顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/`、`learn/` 的 7 个模块，以及 `kernel/01_driver_framework`、`kernel/02_kernel_interface`、`kernel/03_driver_calls`。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
+顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/`、`learn/` 的 7 个模块，以及 `kernel/01` 到 `kernel/09`。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
 
 客户机内核是 Ubuntu `5.15.0-173-generic`。QEMU 里有两套检查：冒烟套件 **81 项**，章节实验 **79 项**，最近一次都是 0 项失败，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。GitHub Actions 每次推送和 PR 都会跑这两套。内核主线占其中的 `kernel/01`、`kernel/02` 和 `kernel/03`。
 
@@ -58,7 +58,7 @@ docker run --rm -it ldd-lab
 docker run --rm ldd-lab test
 ```
 
-只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01`、`kernel02`、`kernel03`，或 `all`。
+只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01` 到 `kernel09`，或 `all`。
 
 ```bash
 docker run --rm ldd-lab chapter ch02
@@ -157,6 +157,8 @@ linux_device_driver/
 `kernel/02_kernel_interface` 把这条路径上的内核函数也打出来。写 `/sys/bus/virtkif/bind` 时，ftrace 要依次出现 `kernfs_fop_write_iter`、`device_add`、`really_probe`、`virt_kif_bus_probe`、`virt_kif_driver_probe`。读 `/dev/virt_kif` 时，要依次出现 `chrdev_open`、`virt_kif_open`、`vfs_read`、`virt_kif_read`。
 
 `kernel/03_driver_calls` 看另一个方向。用户态写 `/dev/virt_call` 时，跟踪里是 `virt_call_write <-vfs_write`，接着是 `__check_object_size <-virt_call_write`。这是内联的 `copy_from_user()` 在搬字节之前做的长度检查；`_copy_from_user` 本身不在这台内核的函数跟踪过滤表里。读回来时，调用者换成 `virt_call_read`。读到的 4 个字节就是写入的 `ping`。
+
+`kernel/04_user_paths` 到 `kernel/08_pci_mmio` 沿同一条客户机继续往下。04 看 ioctl、32 位 `compat_ptr_ioctl`、sysfs 和 proc。05 看 `wait_event` / `wake_up` 和 hung task。06 用 irqdomain 走硬中断、tasklet、中断线程和工作队列。07 看 `preempt_count`，并在空转里打出 soft lockup。08 读 QEMU edu 的 BAR0：识别字 `010000ed`，写入 `0x12345678` 后读回 `edcba987`。各章 README 里是客户机的原始回显。
 
 ### 2. 字符设备到 platform：`ch01`–`ch06`
 

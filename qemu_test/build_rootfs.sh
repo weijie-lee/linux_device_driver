@@ -143,10 +143,9 @@ BUSYBOX_BIN=$(command -v busybox)
 cp "${BUSYBOX_BIN}" "${ROOTFS_DIR}/bin/busybox"
 chmod +x "${ROOTFS_DIR}/bin/busybox"
 
-# 创建 busybox applet 符号链接
-for applet in sh ash cat echo ls grep insmod rmmod lsmod \
-              sleep mount umount mkdir mknod ip dmesg \
-              timeout poweroff reboot head find dd od; do
+# 每个 busybox applet 一条符号链接。kernel/ 的实验用到 taskset、cmp、stat、usleep 等。
+for applet in $(busybox --list); do
+    [[ "${applet}" == "busybox" ]] && continue
     ln -sf busybox "${ROOTFS_DIR}/bin/${applet}" 2>/dev/null || true
 done
 # sbin 中的命令
@@ -243,6 +242,12 @@ declare -A KO_MAP=(
     ["kernel/01_driver_framework"]="virt_framework"
     ["kernel/02_kernel_interface"]="virt_kif"
     ["kernel/03_driver_calls"]="virt_call"
+    ["kernel/04_user_paths"]="virt_upath"
+    ["kernel/05_sleep_wake"]="virt_sleep"
+    ["kernel/06_irq_bottom"]="virt_bottom"
+    ["kernel/07_lock_context"]="virt_lock"
+    ["kernel/08_pci_mmio"]="virt_mmio"
+    ["kernel/09_msi_irq"]="virt_msi"
 )
 
 for ch_dir in "${!KO_MAP[@]}"; do
@@ -325,6 +330,11 @@ USER_TESTS=(
     "ch05_misc/tests/test_misc.c"
     "ch06_platform/tests/test_platform.c"
     "ch08_regmap/tests/test_regmap.c"
+    "kernel/04_user_paths/upath_ioctl.c"
+    "kernel/12_fault/fault_touch.c"
+    "kernel/14_block_mq/blk_direct.c"
+    "kernel/21_events/uevent_listen.c"
+    "kernel/25_wait_forms/poll_wait.c"
 )
 for src in "${USER_TESTS[@]}"; do
     bin="$(basename "${src}" .c)"
@@ -336,12 +346,34 @@ for src in "${USER_TESTS[@]}"; do
     fi
 done
 
+# kernel/04 用 32 位程序走 compat_ioctl。需要 gcc-multilib。
+if gcc -m32 -static -O2 -Wall -o "${ROOTFS_DIR}/bin/upath_ioctl32" \
+       "${REPO_DIR}/kernel/04_user_paths/upath_ioctl.c"; then
+    chmod 755 "${ROOTFS_DIR}/bin/upath_ioctl32"
+    ok "32 位 upath_ioctl32 已放入 rootfs"
+else
+    die "编译 32 位 upath_ioctl32 失败（缺 gcc-multilib？）"
+fi
+
+# kernel/18 的固件。ldd-v2/ 给 firmware_class.path 换搜索目录用。
+mkdir -p "${ROOTFS_DIR}/lib/firmware/ldd-v2"
+cp "${REPO_DIR}/kernel/18_firmware/virt_fw.bin" "${ROOTFS_DIR}/lib/firmware/"
+cp "${REPO_DIR}/kernel/18_firmware/ldd-v2/virt_fw.bin" "${ROOTFS_DIR}/lib/firmware/ldd-v2/"
+ok "固件 virt_fw.bin 已放入 rootfs"
+
 # ── Step 5: 生成 init 脚本 ────────────────────────────────────────────────────
 info "Step 5/5: 生成 init 测试脚本..."
 
 cp "${SCRIPT_DIR}/init.sh" "${ROOTFS_DIR}/init"
 cp "${SCRIPT_DIR}/lab.sh" "${ROOTFS_DIR}/lab.sh"
 chmod +x "${ROOTFS_DIR}/init" "${ROOTFS_DIR}/lab.sh"
+mkdir -p "${ROOTFS_DIR}/lab.d"
+for f in "${REPO_DIR}"/kernel/[0-9][0-9]_*/lab.sh; do
+    [[ -f "${f}" ]] || continue
+    chapter="$(basename "$(dirname "${f}")")"
+    cp "${f}" "${ROOTFS_DIR}/lab.d/kernel${chapter%%_*}.sh"
+done
+ok "kernel/ 各章实验脚本: $(ls "${ROOTFS_DIR}/lab.d" | wc -l) 个"
 ok "init 脚本已写入 ${ROOTFS_DIR}/init"
 
 # ── 打包 initramfs ────────────────────────────────────────────────────────────

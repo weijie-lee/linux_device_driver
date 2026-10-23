@@ -108,7 +108,9 @@ else
 fi
 
 # 内核命令行参数
-KERNEL_CMDLINE="console=ttyS0 panic=5 quiet loglevel=3"
+# intel_iommu=on iommu=pt：IOMMU 打开，默认直通。kernel/10 在 sysfs 里把 edu 所在的组切到 DMA 翻译。
+# kfence.sample_interval：5.15 generic 默认是 0，KFENCE 不工作；kernel/11 要它抓越界写。
+KERNEL_CMDLINE="console=ttyS0 panic=5 quiet loglevel=3 intel_iommu=on iommu=pt kfence.sample_interval=50"
 if [[ -n "${CHAPTER}" ]]; then
     KERNEL_CMDLINE="${KERNEL_CMDLINE} ldd_chapter=${CHAPTER}"
 fi
@@ -120,6 +122,8 @@ QEMU_CMD=(
     -m 512M                         # 内存 512MB
     -smp 2                          # 2 个 CPU 核心
     ${KVM_ARGS}                     # CPU 类型/KVM
+    -device intel-iommu,intremap=off  # kernel/10 的 DMA 翻译；不做中断重映射，MSI 仍是 PCI-MSI
+    -device edu                     # QEMU 的教学 PCI 设备 1234:11e8，kernel/08–10 驱动它
     -kernel "${VMLINUZ}"            # 内核
     -initrd "${INITRAMFS}"          # initramfs
     -append "${KERNEL_CMDLINE}"     # 内核参数

@@ -23,6 +23,12 @@ RUN apt-get update \
         busybox-static \
         cpio \
         gzip \
+        xz-utils \
+        curl \
+        git \
+        gdb \
+        sparse \
+        gcc-multilib \
         device-tree-compiler \
         kmod \
     && printf '%s\n' \

@@ -1,0 +1,3 @@
+LDD-FW v1
+board=virt-fw
+regs=0x10,0x20,0x30
