@@ -19,6 +19,15 @@
 #include <fcntl.h>
 #include <errno.h>
 
+
+static void sh(const char *cmd)
+{
+	int status = system(cmd);
+
+	(void)status;
+}
+
+
 #define MASTER_MODULE "i2c_virt_master"
 #define SLAVE_MODULE  "i2c_virt_slave"
 #define DEVICE_PATH   "/dev/i2c_virt"
@@ -33,8 +42,8 @@ int main(void)
 	printf("=== Ch15 I2C 用户态测试程序 ===\n\n");
 
 	/* 清理残留 */
-	system("rmmod " SLAVE_MODULE " 2>/dev/null");
-	system("rmmod " MASTER_MODULE " 2>/dev/null");
+	sh("rmmod " SLAVE_MODULE " 2>/dev/null");
+	sh("rmmod " MASTER_MODULE " 2>/dev/null");
 
 	/* STEP 1: 加载 master */
 	printf("[STEP 1] 加载 I2C master (%s.ko) ...\n", MASTER_MODULE);
@@ -51,7 +60,7 @@ int main(void)
 	ret = system("insmod " SLAVE_MODULE ".ko");
 	if (ret != 0) {
 		fprintf(stderr, "[FAIL] insmod %s 失败\n", SLAVE_MODULE);
-		system("rmmod " MASTER_MODULE " 2>/dev/null");
+		sh("rmmod " MASTER_MODULE " 2>/dev/null");
 		return 1;
 	}
 	printf("  [PASS] slave insmod 成功\n");
@@ -63,8 +72,8 @@ int main(void)
 		printf("  [PASS] %s 存在\n", DEVICE_PATH);
 	} else {
 		fprintf(stderr, "[FAIL] %s 不存在\n", DEVICE_PATH);
-		system("rmmod " SLAVE_MODULE " 2>/dev/null");
-		system("rmmod " MASTER_MODULE " 2>/dev/null");
+		sh("rmmod " SLAVE_MODULE " 2>/dev/null");
+		sh("rmmod " MASTER_MODULE " 2>/dev/null");
 		return 1;
 	}
 
@@ -73,8 +82,8 @@ int main(void)
 	fd = open(DEVICE_PATH, O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, "[FAIL] 打开 %s 失败: %s\n", DEVICE_PATH, strerror(errno));
-		system("rmmod " SLAVE_MODULE " 2>/dev/null");
-		system("rmmod " MASTER_MODULE " 2>/dev/null");
+		sh("rmmod " SLAVE_MODULE " 2>/dev/null");
+		sh("rmmod " MASTER_MODULE " 2>/dev/null");
 		return 1;
 	}
 	n = write(fd, test_data, strlen(test_data));
@@ -98,7 +107,7 @@ int main(void)
 
 	/* STEP 6: 卸载模块 */
 	printf("[STEP 6] 卸载模块 ...\n");
-	system("rmmod " SLAVE_MODULE " 2>/dev/null");
+	sh("rmmod " SLAVE_MODULE " 2>/dev/null");
 	ret = system("rmmod " MASTER_MODULE);
 	if (ret != 0) {
 		fprintf(stderr, "[FAIL] rmmod %s 失败\n", MASTER_MODULE);

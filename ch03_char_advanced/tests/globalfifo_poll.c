@@ -1,11 +1,13 @@
-#include <stdlib.h>		/* for fd_set */
-#include <stdio.h>		/* for printf */
-#include <fcntl.h>		/* for O_RDONLY | O_NONBLOCK */
-#include <sys/ioctl.h>		/* for ioctl */
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
 
 #define FIFO_CLEAR 0X1
 
-void main(void)
+int main(void)
 {
 	int fd;
 	fd_set rfds, wfds;	/* 读写文件描述符集合 */
@@ -23,7 +25,8 @@ void main(void)
 			FD_SET(fd, &rfds);
 			FD_SET(fd, &wfds);
 
-			select(fd + 1, &rfds, &wfds, NULL, NULL);
+			if (select(fd + 1, &rfds, &wfds, NULL, NULL) < 0)
+				break;
 
 			/* 数据可获得 */
 			if (FD_ISSET(fd, &rfds)) {
@@ -38,4 +41,5 @@ void main(void)
 	} else {
 		printf("fail to open device.\n");
 	}
+	return 0;
 }

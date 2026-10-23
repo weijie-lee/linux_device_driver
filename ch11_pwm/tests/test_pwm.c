@@ -19,6 +19,15 @@
 #include <dirent.h>
 #include <errno.h>
 
+
+static void sh(const char *cmd)
+{
+	int status = system(cmd);
+
+	(void)status;
+}
+
+
 #define MODULE_NAME "pwm_demo"
 
 static int write_sysfs(const char *path, const char *val)
@@ -68,8 +77,8 @@ static int find_pwmchip(char *chip_path, size_t len)
 
 int main(void)
 {
-	char chip_path[256];
-	char pwm_path[256];
+	char chip_path[320];
+	char pwm_path[336];
 	char sysfs_path[512];
 	char buf[64];
 	int ret;
@@ -77,7 +86,7 @@ int main(void)
 	printf("=== Ch11 PWM 用户态测试程序 ===\n\n");
 
 	/* 清理残留模块 */
-	system("rmmod " MODULE_NAME " 2>/dev/null");
+	sh("rmmod " MODULE_NAME " 2>/dev/null");
 
 	/* STEP 1: 加载模块 */
 	printf("[STEP 1] 加载 %s.ko ...\n", MODULE_NAME);
@@ -93,7 +102,7 @@ int main(void)
 	printf("[STEP 2] 查找 pwmchip sysfs 节点 ...\n");
 	if (find_pwmchip(chip_path, sizeof(chip_path)) != 0) {
 		fprintf(stderr, "[FAIL] 未找到 /sys/class/pwm/pwmchipN\n");
-		system("rmmod " MODULE_NAME " 2>/dev/null");
+		sh("rmmod " MODULE_NAME " 2>/dev/null");
 		return 1;
 	}
 	printf("  [PASS] 找到 %s\n", chip_path);

@@ -10,6 +10,7 @@
 
 1. `kernel/01_driver_framework`：5.15 `drivers/base` 的 `bus_type`、`device`、`device_driver`。先注册总线和两台设备，再注册驱动。匹配上的设备走 `bus->probe` 再进驱动的 probe；另一台 `match` 返回 0。`/sys/bus/lddfw/trace` 记录这个顺序。
 2. `kernel/02_kernel_interface`：同一条绑定路径上的内核函数，以及字符设备的 `file_operations`。ftrace 里要看到 `really_probe` 调用总线 probe、`chrdev_open` 调用驱动的 open、`vfs_read` 调用驱动的 read。
+3. `kernel/03_driver_calls`：驱动调用内核搬数据。写 `/dev/virt_call` 时要看到 `virt_call_write <-vfs_write` 和 `__check_object_size <-virt_call_write`。读回来时调用者换成 `virt_call_read`。读到的字节和写入的相同。
 
 ## 1. 框架和字符设备
 

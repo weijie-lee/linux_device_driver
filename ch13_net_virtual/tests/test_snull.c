@@ -17,6 +17,15 @@
 #include <string.h>
 #include <unistd.h>
 
+
+static void sh(const char *cmd)
+{
+	int status = system(cmd);
+
+	(void)status;
+}
+
+
 #define MODULE_NAME "snull"
 
 static int iface_exists(const char *iface)
@@ -33,7 +42,7 @@ int main(void)
 	printf("=== Ch13 snull 虚拟网络设备用户态测试程序 ===\n\n");
 
 	/* 清理残留 */
-	system("rmmod " MODULE_NAME " 2>/dev/null");
+	sh("rmmod " MODULE_NAME " 2>/dev/null");
 
 	/* STEP 1: 加载模块 */
 	printf("[STEP 1] 加载 %s.ko ...\n", MODULE_NAME);
@@ -51,7 +60,7 @@ int main(void)
 		printf("  [PASS] sn0 接口已创建\n");
 	} else {
 		fprintf(stderr, "[FAIL] sn0 接口未找到\n");
-		system("rmmod " MODULE_NAME " 2>/dev/null");
+		sh("rmmod " MODULE_NAME " 2>/dev/null");
 		return 1;
 	}
 	if (iface_exists("sn1")) {
@@ -62,10 +71,10 @@ int main(void)
 
 	/* STEP 3: 配置 IP 地址 */
 	printf("[STEP 3] 配置 IP 地址 ...\n");
-	system("ip addr add 192.168.100.1/24 dev sn0 2>/dev/null || true");
-	system("ip addr add 192.168.101.1/24 dev sn1 2>/dev/null || true");
-	system("ip link set sn0 up 2>/dev/null || true");
-	system("ip link set sn1 up 2>/dev/null || true");
+	sh("ip addr add 192.168.100.1/24 dev sn0 2>/dev/null || true");
+	sh("ip addr add 192.168.101.1/24 dev sn1 2>/dev/null || true");
+	sh("ip link set sn0 up 2>/dev/null || true");
+	sh("ip link set sn1 up 2>/dev/null || true");
 	usleep(300000);
 	printf("  [PASS] IP 配置完成\n");
 
@@ -87,8 +96,8 @@ int main(void)
 
 	/* STEP 6: 卸载模块 */
 	printf("[STEP 6] 卸载模块 ...\n");
-	system("ip link set sn0 down 2>/dev/null || true");
-	system("ip link set sn1 down 2>/dev/null || true");
+	sh("ip link set sn0 down 2>/dev/null || true");
+	sh("ip link set sn1 down 2>/dev/null || true");
 	ret = system("rmmod " MODULE_NAME);
 	if (ret != 0) {
 		fprintf(stderr, "[FAIL] rmmod 失败\n");

@@ -17,6 +17,15 @@
 #include <string.h>
 #include <unistd.h>
 
+
+static void sh(const char *cmd)
+{
+	int status = system(cmd);
+
+	(void)status;
+}
+
+
 #define MODULE_NAME "eth_mac"
 
 /* 查找 eth_mac 驱动创建的网络接口 */
@@ -46,26 +55,33 @@ static int find_eth_iface(char *iface, size_t len)
 	if (f) {
 		if (fgets(line, sizeof(line), f)) {
 			line[strcspn(line, "\n")] = '\0';
-			fclose(f);
 			if (strlen(line) > 0) {
+				pclose(f);
 				/* 通过 sysfs 找到设备，再找对应的网络接口 */
 				strncpy(iface, "eth_virt0", len - 1);
+				iface[len - 1] = '\0';
 				return 0;
 			}
 		}
-		fclose(f);
+		pclose(f);
 	}
 
 	/* 最后尝试通过 dmesg 查找 */
 	f = popen("dmesg | grep -oP '(?<=registered )\\w+(?= as)' | tail -1", "r");
 	if (f) {
 		if (fgets(line, sizeof(line), f) && strlen(line) > 1) {
+			size_t n;
+
 			line[strcspn(line, "\n")] = '\0';
-			strncpy(iface, line, len - 1);
-			fclose(f);
+			n = strlen(line);
+			if (n >= len)
+				n = len - 1;
+			memcpy(iface, line, n);
+			iface[n] = '\0';
+			pclose(f);
 			return 0;
 		}
-		fclose(f);
+		pclose(f);
 	}
 
 	return -1;
@@ -79,7 +95,7 @@ int main(void)
 	printf("=== Ch14 eth_mac 用户态测试程序 ===\n\n");
 
 	/* 清理残留 */
-	system("rmmod " MODULE_NAME " 2>/dev/null");
+	sh("rmmod " MODULE_NAME " 2>/dev/null");
 
 	/* STEP 1: 加载模块 */
 	printf("[STEP 1] 加载 %s.ko ...\n", MODULE_NAME);
@@ -102,7 +118,7 @@ int main(void)
 			strncpy(iface, "eth_virt0", sizeof(iface) - 1);
 		} else {
 			fprintf(stderr, "[FAIL] 未找到网络接口\n");
-			system("rmmod " MODULE_NAME " 2>/dev/null");
+			sh("rmmod " MODULE_NAME " 2>/dev/null");
 			return 1;
 		}
 	}

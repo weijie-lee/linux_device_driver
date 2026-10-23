@@ -652,6 +652,10 @@ kif_hits() {
             *": virt_kif_open <-"*) hits="$hits virt_kif_open" ;;
             *": vfs_read <-"*) hits="$hits vfs_read" ;;
             *": virt_kif_read <-"*) hits="$hits virt_kif_read" ;;
+            *": virt_call_write <-vfs_write"*) hits="$hits virt_call_write" ;;
+            *": __check_object_size <-virt_call_write"*) hits="$hits check_object_size" ;;
+            *": virt_call_read <-vfs_read"*) hits="$hits virt_call_read" ;;
+            *": __check_object_size <-virt_call_read"*) hits="$hits check_object_size" ;;
         esac
     done < "$TR/trace"
     echo "$hits"
@@ -820,6 +824,83 @@ lab_kernel02() {
     finish
 }
 
+lab_kernel03() {
+    begin "kernel03_calls"
+    TR=/sys/kernel/tracing
+    if [ ! -f "$TR/trace" ]; then
+        TR=/sys/kernel/debug/tracing
+    fi
+    if [ ! -f "$TR/trace" ]; then
+        echo "tracefs missing"
+        ok=0
+        finish
+        return
+    fi
+    load "$MODDIR/kernel_03_driver_calls_virt_call.ko" || { finish; return; }
+    node /dev/virt_call
+    echo "+ printf ping > /dev/virt_call"
+    if ! kif_arm virt_call_write __check_object_size; then
+        kif_off
+        unload virt_call
+        finish
+        return
+    fi
+    printf ping > /dev/virt_call
+    echo "write ok"
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ head -n 20 $TR/trace"
+    head -n 20 "$TR/trace"
+    hits=$(kif_hits)
+    kif_off
+    echo "write-hits:$hits"
+    write_expect=" virt_call_write check_object_size"
+    if [ "$hits" = "$write_expect" ]; then
+        echo "write order ok"
+    else
+        echo "write order mismatch"
+        echo "expect:$write_expect"
+        ok=0
+    fi
+    echo "+ head -c 4 /dev/virt_call > /tmp/call_out"
+    if ! kif_arm virt_call_read __check_object_size; then
+        kif_off
+        unload virt_call
+        finish
+        return
+    fi
+    head -c 4 /dev/virt_call > /tmp/call_out
+    echo "+ echo 0 > $TR/tracing_on"
+    echo 0 > "$TR/tracing_on"
+    echo "+ head -n 20 $TR/trace"
+    head -n 20 "$TR/trace"
+    hits=$(kif_hits)
+    kif_off
+    echo "read-hits:$hits"
+    read_expect=" virt_call_read check_object_size"
+    if [ "$hits" = "$read_expect" ]; then
+        echo "read order ok"
+    else
+        echo "read order mismatch"
+        echo "expect:$read_expect"
+        ok=0
+    fi
+    echo "+ cat /tmp/call_out"
+    data=$(cat /tmp/call_out)
+    printf '%s\n' "$data"
+    if [ "$data" = "ping" ]; then
+        echo "read ok"
+    else
+        echo "read mismatch"
+        ok=0
+    fi
+    unload virt_call
+    run "dmesg | grep virt_call:"
+    want "virt_call: stored 4"
+    want "virt_call: returned 4"
+    finish
+}
+
 lab_main() {
     case "$1" in
         all)
@@ -840,6 +921,7 @@ lab_main() {
             lab_learn05; lab_learn06; lab_learn07
             lab_kernel01
             lab_kernel02
+            lab_kernel03
             ;;
         ch01|ch01_kernel_basics) lab_ch01 ;;
         ch02|ch02_char_basic) lab_ch02 ;;
@@ -919,6 +1001,7 @@ lab_main() {
         learn07|learn/07_debug|learn/07) lab_learn07 ;;
         kernel01|kernel/01|kernel/01_driver_framework) lab_kernel01 ;;
         kernel02|kernel/02|kernel/02_kernel_interface) lab_kernel02 ;;
+        kernel03|kernel/03|kernel/03_driver_calls) lab_kernel03 ;;
         *)
             echo "未知章节: $1"
             fail "lab" "unknown chapter $1"

@@ -2,13 +2,14 @@
 #include <fcntl.h>
 #include <signal.h>		/* for signal */
 #include <unistd.h>		/* for getpid */
+#include <sys/stat.h>
 
 static void signalio_handler(int signum)
 {
 	printf("receive a signal from globalfifo, signalnum %d\n", signum);
 }
 
-void main(void)
+int main(void)
 {
 	int fd, oflags;
 
@@ -24,4 +25,5 @@ void main(void)
 	} else {
 		printf("device open failure\n");
 	}
+	return 0;
 }
