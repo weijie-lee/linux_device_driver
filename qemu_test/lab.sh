@@ -1065,7 +1065,7 @@ lab_main() {
             lab_kernel02
             lab_kernel03
             lab_kernel04; lab_kernel05; lab_kernel06; lab_kernel07
-            lab_kernel08
+            lab_kernel08; lab_kernel09
             ;;
         ch01|ch01_kernel_basics) lab_ch01 ;;
         ch02|ch02_char_basic) lab_ch02 ;;

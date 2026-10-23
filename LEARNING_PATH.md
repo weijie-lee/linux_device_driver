@@ -16,6 +16,7 @@
 6. `kernel/06_irq_bottom`：一次软件中断穿过硬中断、tasklet、中断线程和工作队列。`counts` 是 `1 1 1 1 1 1 1 0`。
 7. `kernel/07_lock_context`：进程里 `preempt_count` 是 0，硬中断里是 65536。空转触发 `soft lockup`，RIP 落在 `virt_lock_spin`。
 8. `kernel/08_pci_mmio`：edu 设备 `1234:11e8`。`ident` 是 `010000ed`。往活性寄存器写 `0x12345678`，读回 `edcba987`。`ioread32` 不在函数跟踪过滤表里。
+9. `kernel/09_msi_irq`：同一块卡的 MSI。`echo 5` 之后 `fact=120`，`/proc/interrupts` 里 `virt_msi` 的计数加一。
 
 ## 1. 框架和字符设备
 

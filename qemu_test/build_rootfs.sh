@@ -247,6 +247,7 @@ declare -A KO_MAP=(
     ["kernel/06_irq_bottom"]="virt_bottom"
     ["kernel/07_lock_context"]="virt_lock"
     ["kernel/08_pci_mmio"]="virt_mmio"
+    ["kernel/09_msi_irq"]="virt_msi"
 )
 
 for ch_dir in "${!KO_MAP[@]}"; do

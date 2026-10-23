@@ -14,7 +14,7 @@
 | 索引 | `ch21`–`ch68` | 要查某个子系统的注册函数时再打开，不必按编号学完 |
 | 内核 | `kernel/` | 和具体驱动分开。`kernel/01` 到 `kernel/03` 看绑定和 `copy_*_user`，`kernel/04` 到 `kernel/07` 看 ioctl/sysfs/proc、睡眠唤醒、中断下半部、锁和 soft lockup |
 
-顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/`、`learn/` 的 7 个模块，以及 `kernel/01` 到 `kernel/08`。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
+顶层 `make all` 编译 `ch01`–`ch68`、`hardcode/`、`learn/` 的 7 个模块，以及 `kernel/01` 到 `kernel/09`。每个 5.15 `drivers/` 目录要么对应某一章，要么在 [LINUX_DRIVER_COVERAGE.md](LINUX_DRIVER_COVERAGE.md) 里说明为什么不做成外置模块。本仓库不拷贝内核 `drivers/` 树。
 
 客户机内核是 Ubuntu `5.15.0-173-generic`。QEMU 里有两套检查：冒烟套件 **81 项**，章节实验 **79 项**，最近一次都是 0 项失败，记录在 [TEST_RESULTS.md](TEST_RESULTS.md)。GitHub Actions 每次推送和 PR 都会跑这两套。内核主线占其中的 `kernel/01`、`kernel/02` 和 `kernel/03`。
 
@@ -58,7 +58,7 @@ docker run --rm -it ldd-lab
 docker run --rm ldd-lab test
 ```
 
-只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01` 到 `kernel08`，或 `all`。
+只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01` 到 `kernel09`，或 `all`。
 
 ```bash
 docker run --rm ldd-lab chapter ch02

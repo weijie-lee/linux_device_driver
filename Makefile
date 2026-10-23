@@ -89,7 +89,8 @@ CHAPTERS := \
 	kernel/05_sleep_wake \
 	kernel/06_irq_bottom \
 	kernel/07_lock_context \
-	kernel/08_pci_mmio
+	kernel/08_pci_mmio \
+	kernel/09_msi_irq
 
 .PHONY: all clean test lab help $(CHAPTERS)
 

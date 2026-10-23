@@ -12,3 +12,4 @@
 6. [`06_irq_bottom`](06_irq_bottom)：irqdomain 加 irq_work。硬中断、tasklet、中断线程、工作队列，外加自定义 `TRACE_EVENT`。
 7. [`07_lock_context`](07_lock_context)：mutex 和自旋锁、`preempt_count`、每 CPU 计数，以及一次 soft lockup。
 8. [`08_pci_mmio`](08_pci_mmio)：QEMU edu 的 BAR0。识别字 `0x010000ed`，活性寄存器写入后读回按位取反。
+9. [`09_msi_irq`](09_msi_irq)：同一块 edu 用 MSI 算阶乘。写入 5，读回 120，`/proc/interrupts` 加一。
