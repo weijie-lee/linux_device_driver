@@ -58,7 +58,7 @@ docker run --rm -it ldd-lab
 docker run --rm ldd-lab test
 ```
 
-只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01` 到 `kernel07`，或 `all`。
+只复现某一章时，客户机会打印这一章实际执行的命令和回显，并以 `[PASS]` 结束。章节参数用 `ch01`、`ch21`、`learn01`、`hardcode`、`kernel01` 到 `kernel08`，或 `all`。
 
 ```bash
 docker run --rm ldd-lab chapter ch02
@@ -158,7 +158,7 @@ linux_device_driver/
 
 `kernel/03_driver_calls` 看另一个方向。用户态写 `/dev/virt_call` 时，跟踪里是 `virt_call_write <-vfs_write`，接着是 `__check_object_size <-virt_call_write`。这是内联的 `copy_from_user()` 在搬字节之前做的长度检查；`_copy_from_user` 本身不在这台内核的函数跟踪过滤表里。读回来时，调用者换成 `virt_call_read`。读到的 4 个字节就是写入的 `ping`。
 
-`kernel/04_user_paths` 到 `kernel/07_lock_context` 沿同一条客户机继续往下。04 看 ioctl、32 位 `compat_ptr_ioctl`、sysfs 和 proc。05 看 `wait_event` / `wake_up` 和 hung task。06 用 irqdomain 走硬中断、tasklet、中断线程和工作队列。07 看 `preempt_count`，并在空转里打出 soft lockup。各章 README 里是客户机的原始回显。
+`kernel/04_user_paths` 到 `kernel/08_pci_mmio` 沿同一条客户机继续往下。04 看 ioctl、32 位 `compat_ptr_ioctl`、sysfs 和 proc。05 看 `wait_event` / `wake_up` 和 hung task。06 用 irqdomain 走硬中断、tasklet、中断线程和工作队列。07 看 `preempt_count`，并在空转里打出 soft lockup。08 读 QEMU edu 的 BAR0：识别字 `010000ed`，写入 `0x12345678` 后读回 `edcba987`。各章 README 里是客户机的原始回显。
 
 ### 2. 字符设备到 platform：`ch01`–`ch06`
 

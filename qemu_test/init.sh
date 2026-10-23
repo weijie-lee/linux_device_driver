@@ -823,7 +823,7 @@ fi
 # 两套检查共用一份判据，不在这里再写一遍。失败时把这一章的回显打到串口。
 echo "--- kernel/04-26 (same checks as lab.sh) ---"
 . /lab.sh
-for c in kernel04 kernel05 kernel06 kernel07; do
+for c in kernel04 kernel05 kernel06 kernel07 kernel08; do
     lab_main "$c" > "/tmp/lab_$c.log" 2>&1
     grep -E '^\[(PASS|FAIL)\]' "/tmp/lab_$c.log"
     if grep -q '^\[FAIL\]' "/tmp/lab_$c.log"; then

@@ -6,8 +6,8 @@
  *   0x00 只读，识别字 0x010000ed
  *   0x04 写入一个值，读回来是它的按位取反
  *
- * 只接受 4 字节访问。ioread32/iowrite32 在 x86 上是独立函数，
- * 函数跟踪里能看到调用者是驱动。
+ * 只接受 4 字节访问。System.map 里有 ioread32，但这台内核的
+ * set_ftrace_filter 不接受它。跟踪停在驱动自己的 noinline 包装上。
  */
 #include <linux/io.h>
 #include <linux/module.h>

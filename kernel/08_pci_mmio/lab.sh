@@ -21,7 +21,7 @@ lab_kernel08() {
     want "010000ed"
 
     # 设备还在，驱动函数已经在内存里。摘掉再 rescan，probe 才会进这次跟踪。
-    ft_arm virt_mmio_probe local_pci_probe virt_mmio_read_id ioread32 \
+    ft_arm virt_mmio_probe local_pci_probe virt_mmio_read_id \
         || { ft_off; unload virt_mmio; finish; return; }
     echo "+ echo 1 > $dev/remove"
     echo 1 > "$dev/remove"
@@ -29,14 +29,13 @@ lab_kernel08() {
     echo 1 > /sys/bus/pci/rescan
     echo "+ echo 0 > $TR/tracing_on"
     echo 0 > "$TR/tracing_on"
-    ft_show 'virt_mmio_probe|local_pci_probe|virt_mmio_read_id|ioread32'
+    ft_show 'virt_mmio_probe|local_pci_probe|virt_mmio_read_id'
     hits=$(ft_hits \
         ": local_pci_probe <-=local_pci_probe" \
         ": virt_mmio_probe <-local_pci_probe=driver_probe" \
-        ": virt_mmio_read_id <-virt_mmio_probe=read_id" \
-        ": ioread32 <-virt_mmio_read_id=ioread32")
+        ": virt_mmio_read_id <-virt_mmio_probe=read_id")
     ft_off
-    expect_order probe "$hits" local_pci_probe driver_probe read_id ioread32
+    expect_order probe "$hits" local_pci_probe driver_probe read_id
 
     dev=""
     for d in /sys/bus/pci/drivers/virt_mmio/0000:*; do
@@ -49,7 +48,7 @@ lab_kernel08() {
         finish
         return
     fi
-    ft_arm liveness_show liveness_store ioread32 iowrite32 \
+    ft_arm liveness_show liveness_store dev_attr_show dev_attr_store \
         || { ft_off; unload virt_mmio; finish; return; }
     echo "+ echo 0x12345678 > $dev/liveness"
     echo 0x12345678 > "$dev/liveness"
@@ -57,14 +56,14 @@ lab_kernel08() {
     cat "$dev/liveness" > /tmp/edu_live
     echo "+ echo 0 > $TR/tracing_on"
     echo 0 > "$TR/tracing_on"
-    ft_show 'liveness_|ioread32|iowrite32'
+    ft_show 'liveness_|dev_attr_'
     hits=$(ft_hits \
+        ": dev_attr_store <-=dev_attr_store" \
         ": liveness_store <-dev_attr_store=store" \
-        ": iowrite32 <-liveness_store=iowrite32" \
-        ": liveness_show <-dev_attr_show=show" \
-        ": ioread32 <-liveness_show=ioread32")
+        ": dev_attr_show <-=dev_attr_show" \
+        ": liveness_show <-dev_attr_show=show")
     ft_off
-    expect_order mmio "$hits" store iowrite32 show ioread32
+    expect_order mmio "$hits" dev_attr_store store dev_attr_show show
     run "cat /tmp/edu_live"
     want "edcba987"
 
